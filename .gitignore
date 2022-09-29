@@ -3,6 +3,6 @@ build/
 backup/
 **/*.so
 **/*.o
-brpc/
 
-!brpc/output
+brpc/*
+!brpc/output/
