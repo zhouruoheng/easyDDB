@@ -16,18 +16,32 @@
 // under the License.
 
 syntax="proto2";
-package example;
+package db;
 
 option cc_generic_services = true;
 
-message EchoRequest {
-      required string message = 1;
+message ClientRequest {
+      required string msg_type = 1;
+      required string msg = 2;
 };
 
-message EchoResponse {
-      required string message = 1;
+message ClientResponse {
+      required string msg = 1;
 };
 
-service EchoService {
-      rpc Echo(EchoRequest) returns (EchoResponse);
+service ClientService {
+      rpc SendMsg(ClientRequest) returns (ClientResponse);
 };
+
+message ClusterRequest {
+      required string msg_type = 1;
+      required string msg = 2;
+}
+
+message ClusterResponse {
+      required string msg = 1;
+}
+
+service ClusterService {
+      rpc SendMsg(ClusterRequest) returns (ClusterResponse);
+}

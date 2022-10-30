@@ -20,7 +20,7 @@ set(CMAKE_PREFIX_PATH ${OUTPUT_PATH})
 
 include(FindThreads)
 include(FindProtobuf)
-protobuf_generate_cpp(PROTO_SRC PROTO_HEADER src/echo.proto)
+protobuf_generate_cpp(PROTO_SRC PROTO_HEADER src/db.proto)
 # include PROTO_HEADER
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
@@ -130,13 +130,14 @@ endif()
 
 # ------------------------------ SET SQLParser ---------------------------------------
 
-set(SQLParser_LIBRARY ${CMAKE_CURRENT_SOURCE_DIR}/sql-parser/libsqlparser.so)
-
 add_custom_target(build_SQLParser ALL
     COMMAND ${CMAKE_MAKE_PROGRAM}
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/sql-parser/
     COMMENT "Original sql-parser makefile target."
 )
+file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/sql-parser/libsqlparser.so DESTINATION ${CMAKE_BINARY_DIR})
+
+set(SQLParser_LIBRARY ${CMAKE_BINARY_DIR}/libsqlparser.so)
 
 add_library(SQLParser SHARED IMPORTED)
 
@@ -145,6 +146,13 @@ set_target_properties(SQLParser PROPERTIES IMPORTED_LOCATION_NOCONFIG "${SQLPars
 
 add_dependencies(SQLParser build_SQLParser)
 
+# ------------------------------ CLI -------------------------------------------
+
+add_subdirectory(cli)
+
+# ------------------------------ Copy Resources -----------------------------------
+
+file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/res DESTINATION ${CMAKE_BINARY_DIR})
 
 # ------------------------------ Executable ---------------------------------------
 
@@ -157,7 +165,7 @@ file(GLOB db_sources
 )
 
 add_executable(client ${client_sources} ${PROTO_SRC} ${PROTO_HEADER})
-target_link_libraries(client ${BRPC_LIB} ${DYNAMIC_LIB})
+target_link_libraries(client ${BRPC_LIB} ${DYNAMIC_LIB} cli::cli)
 
 add_executable(db ${db_sources} ${PROTO_SRC} ${PROTO_HEADER})
 target_include_directories(db PUBLIC sql-parser/src)

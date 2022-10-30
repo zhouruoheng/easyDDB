@@ -1,10 +1,10 @@
 #include <gflags/gflags.h>
 #include <butil/logging.h>
 #include <brpc/server.h>
-#include "echo.pb.h"
+#include "db.pb.h"
 
 DEFINE_bool(echo_attachment, true, "Echo attachment as well");
-DEFINE_int32(port, 8888, "TCP Port of this server");
+DEFINE_int32(port, 1234, "TCP Port of this server");
 DEFINE_string(listen_addr, "", "Server listen address, may be IPV4/IPV6/UDS."
             " If this is set, the flag port will be ignored");
 DEFINE_int32(idle_timeout_s, -1, "Connection will be closed if there is no "
@@ -12,17 +12,18 @@ DEFINE_int32(idle_timeout_s, -1, "Connection will be closed if there is no "
 DEFINE_int32(logoff_ms, 2000, "Maximum duration of server's LOGOFF state "
              "(waiting for client to close connection before server stops)");
 
-// Your implementation of example::EchoService
+// Your implementation of db::ClientService
 // Notice that implementing brpc::Describable grants the ability to put
 // additional information in /status.
-namespace example {
-class EchoServiceImpl : public EchoService {
+namespace db {
+
+class ClientServiceImpl : public ClientService {
 public:
-    EchoServiceImpl() {};
-    virtual ~EchoServiceImpl() {};
+    ClientServiceImpl() {};
+    virtual ~ClientServiceImpl() {};
     virtual void Echo(google::protobuf::RpcController* cntl_base,
-                      const EchoRequest* request,
-                      EchoResponse* response,
+                      const ClientRequest* request,
+                      ClientResponse* response,
                       google::protobuf::Closure* done) {
         // This object helps you to call done->Run() in RAII style. If you need
         // to process the request asynchronously, pass done_guard.release().
@@ -37,11 +38,11 @@ public:
         LOG(INFO) << "Received request[log_id=" << cntl->log_id() 
                   << "] from " << cntl->remote_side() 
                   << " to " << cntl->local_side()
-                  << ": " << request->message()
+                  << ": " << request->msg()
                   << " (attached=" << cntl->request_attachment() << ")";
 
         // Fill response.
-        response->set_message(request->message());
+        response->set_msg(request->msg());
 
         // You can compress the response by setting Controller, but be aware
         // that compression may be costly, evaluate before turning on.
@@ -54,7 +55,8 @@ public:
         }
     }
 };
-}  // namespace example
+
+}  // namespace db
 
 int main(int argc, char* argv[]) {
     // Parse gflags. We recommend you to use gflags as well.
@@ -64,12 +66,12 @@ int main(int argc, char* argv[]) {
     brpc::Server server;
 
     // Instance of your service.
-    example::EchoServiceImpl echo_service_impl;
+    db::ClientServiceImpl client_service_impl;
 
     // Add the service into server. Notice the second parameter, because the
     // service is put on stack, we don't want server to delete it, otherwise
     // use brpc::SERVER_OWNS_SERVICE.
-    if (server.AddService(&echo_service_impl, 
+    if (server.AddService(&client_service_impl, 
                           brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
         LOG(ERROR) << "Fail to add service";
         return -1;
