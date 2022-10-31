@@ -2,9 +2,9 @@
 #include <butil/logging.h>
 #include <brpc/server.h>
 #include "db.pb.h"
-#include "kv_manager.hpp"
+#include "cluster_manager.hpp"
 
-// For ClientService
+// For ClusterService
 DEFINE_bool(echo_attachment, true, "Echo attachment as well");
 DEFINE_int32(port, 1234, "TCP Port of this server");
 DEFINE_string(listen_addr, "", "Server listen address, may be IPV4/IPV6/UDS."
@@ -14,7 +14,8 @@ DEFINE_int32(idle_timeout_s, -1, "Connection will be closed if there is no "
 DEFINE_int32(logoff_ms, 2000, "Maximum duration of server's LOGOFF state "
              "(waiting for client to close connection before server stops)");
 
-// For KV-manager
+// For ClusterManager
+DEFINE_string(site_name, "site-1", "Local site name");
 DEFINE_string(protocol, "baidu_std", "Protocol type. Defined in src/brpc/options.proto");
 DEFINE_string(connection_type, "", "Connection type. Available values: single, pooled, short");
 DEFINE_string(load_balancer, "", "The algorithm for load balancing");
@@ -26,13 +27,13 @@ DEFINE_int32(max_retry, 3, "Max retries(not including the first RPC)");
 // additional information in /status.
 namespace db {
 
-class ClientServiceImpl : public ClientService {
+class ClusterServiceImpl : public ClusterService {
 private:
-    KVManager manager;
+    SiteManager manager;
 public:
-    ClientServiceImpl() : manager() {};
-    virtual ~ClientServiceImpl() {};
-    virtual void SendMsg(google::protobuf::RpcController* cntl_base,
+    ClusterServiceImpl() : manager(FLAGS_site_name) {};
+    virtual ~ClusterServiceImpl() {};
+    virtual void SendClientMsg(google::protobuf::RpcController* cntl_base,
                       const ClientRequest* request,
                       ClientResponse* response,
                       google::protobuf::Closure* done) {
@@ -77,12 +78,12 @@ int main(int argc, char* argv[]) {
     brpc::Server server;
 
     // Instance of your service.
-    db::ClientServiceImpl client_service_impl;
+    db::ClusterServiceImpl cluster_service_impl;
 
     // Add the service into server. Notice the second parameter, because the
     // service is put on stack, we don't want server to delete it, otherwise
     // use brpc::SERVER_OWNS_SERVICE.
-    if (server.AddService(&client_service_impl, 
+    if (server.AddService(&cluster_service_impl, 
                           brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
         LOG(ERROR) << "Fail to add service";
         return -1;

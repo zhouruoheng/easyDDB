@@ -1,4 +1,4 @@
-#include "kv_manager.hpp"
+#include "cluster_manager.hpp"
 
 #include <fstream>
 #include <butil/logging.h>
@@ -8,12 +8,12 @@
 
 using json = nlohmann::json;
 
-KVManager::KVManager() : site_dict(), sites() {
+SiteManager::SiteManager(const std::string &_local_site_name) 
+    : site_dict(), sites(), local_site_name(_local_site_name) {
     std::ifstream f("res/cluster_config.json");
     json cluster_config = json::parse(f);
     for (auto &site_config : cluster_config) {
-        
-        std::shared_ptr<KVSite> ptr_site = std::make_shared<KVSite>();
+        std::shared_ptr<SiteClient> ptr_site = std::make_shared<SiteClient>();
 
         // A Channel represents a communication line to a Server. Notice that 
         // Channel is thread-safe and can be shared by all threads in your program.
@@ -29,13 +29,13 @@ KVManager::KVManager() : site_dict(), sites() {
         options.connection_type = FLAGS_connection_type;
         options.timeout_ms = FLAGS_timeout_ms/*milliseconds*/;
         options.max_retry = FLAGS_max_retry;
-        std::string url = cluster_config["addr"].get<std::string>();
+        std::string url = site_config["addr"].get<std::string>();
         if (ptr_site->channel.Init(url.c_str(), FLAGS_load_balancer.c_str(), &options) != 0) {
             LOG(ERROR) << "Fail to initialize channel";
             exit(-1);
         }
 
-        std::string site_name = cluster_config["site-name"].get<std::string>();
+        std::string site_name = site_config["site-name"].get<std::string>();
         site_dict.insert({site_name, ptr_site});
         sites.push_back(ptr_site);
     }

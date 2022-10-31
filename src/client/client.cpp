@@ -16,7 +16,7 @@ DEFINE_int32(timeout_ms, 100, "RPC timeout in milliseconds");
 DEFINE_int32(max_retry, 3, "Max retries(not including the first RPC)");
 
 std::string send_request(
-    db::ClientService_Stub &stub, 
+    db::ClusterService_Stub &stub, 
     const std::string &msg_type,
     const std::string &msg, 
     int log_id
@@ -35,7 +35,7 @@ std::string send_request(
 
     // Because `done'(last parameter) is NULL, this function waits until
     // the response comes back or error occurs(including timedout).
-    stub.SendMsg(&cntl, &request, &response, NULL);
+    stub.SendClientMsg(&cntl, &request, &response, NULL);
     std::stringstream ss;
     if (!cntl.Failed()) {
         ss << "Received response from " << cntl.remote_side()
@@ -46,14 +46,6 @@ std::string send_request(
     } else {
         ss << cntl.ErrorText();
     }
-    return ss.str();
-}
-
-std::string concate_msg(const std::string &msg_type, const std::vector<std::string> &msg_slice) {
-    std::stringstream ss;
-    ss << msg_type;
-    for (const auto &s: msg_slice)
-        ss << " " << s;
     return ss.str();
 }
 
@@ -69,7 +61,7 @@ int main(int argc, char *argv[]) {
 
     // Normally, you should not call a Channel directly, but instead construct
     // a stub Service wrapping it. stub can be shared by all threads as well.
-    db::ClientService_Stub stub(&channel);
+    db::ClusterService_Stub stub(&channel);
 
     // Initialize the channel, NULL means using default options.
     brpc::ChannelOptions options;
@@ -83,15 +75,17 @@ int main(int argc, char *argv[]) {
     }
     
     cli::Shell shell([&](const std::string &msg) -> void {
-        // std::string recv_msg = send_request(stub, "sql", msg, ++log_id);
+        std::string recv_msg = send_request(stub, "sql", msg, ++log_id);
         printf("execute sql: %s\n", msg.c_str());
+        printf("recv msg: %s\n", recv_msg.c_str());
     });
 
     shell.register_conf_cmd(
         "partition",
         [&](const std::string &msg) -> void {
-            // std::string recv_msg = send_request(stub, "sql", msg, ++log_id);
+            std::string recv_msg = send_request(stub, "conf", msg, ++log_id);
             printf("execute conf: %s\n", msg.c_str());
+            printf("recv msg: %s\n", recv_msg.c_str());
         }
     );
 

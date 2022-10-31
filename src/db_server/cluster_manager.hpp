@@ -19,20 +19,21 @@ DECLARE_int32(timeout_ms);
 DECLARE_int32(max_retry);
 
 
-class KVSite {
+class SiteClient {
 public:
     brpc::Channel channel;
     db::ClusterService_Stub stub;
 
-    KVSite() : channel(), stub(&channel) {}
-    ~KVSite() = default;
+    SiteClient() : channel(), stub(&channel) {}
+    ~SiteClient() = default;
 };
 
-class KVManager {
+class SiteManager {
 public:
-    std::map<std::string, std::shared_ptr<KVSite>> site_dict; // name to index
-    std::vector<std::shared_ptr<KVSite>> sites;
+    std::map<std::string, std::shared_ptr<SiteClient>> site_dict; // name to index
+    std::vector<std::shared_ptr<SiteClient>> sites;
+    std::string local_site_name;
 
-    KVManager();
-    ~KVManager() = default;
+    SiteManager(const std::string &_local_site_name);
+    ~SiteManager() = default;
 };
