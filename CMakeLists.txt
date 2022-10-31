@@ -158,6 +158,11 @@ find_library(READLINE_LIB NAMES readline)
 
 include_directories(${READLINE_INCLUDE_PATH})
 
+# ------------------------------ json ---------------------------------------------
+
+set(JSON_BuildTests OFF CACHE INTERNAL "")
+add_subdirectory(nlohmann_json)
+
 # ------------------------------ Copy Resources -----------------------------------
 
 file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/res DESTINATION ${CMAKE_BINARY_DIR})
@@ -181,8 +186,8 @@ target_link_libraries(client ${BRPC_LIB} ${DYNAMIC_LIB} ${READLINE_LIB})
 
 add_executable(db ${db_sources} ${PROTO_SRC} ${PROTO_HEADER})
 target_include_directories(db PUBLIC sql-parser/src)
-target_link_libraries(db ${BRPC_LIB} ${DYNAMIC_LIB} SQLParser)
+target_link_libraries(db ${BRPC_LIB} ${DYNAMIC_LIB} SQLParser nlohmann_json::nlohmann_json)
 
 add_executable(kv ${kv_sources} ${PROTO_SRC} ${PROTO_HEADER})
 target_include_directories(kv PUBLIC sql-parser/src)
-target_link_libraries(kv ${BRPC_LIB} ${DYNAMIC_LIB} SQLParser)
+target_link_libraries(kv ${BRPC_LIB} ${DYNAMIC_LIB} SQLParser nlohmann_json::nlohmann_json)
