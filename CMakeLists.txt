@@ -1,11 +1,16 @@
 cmake_minimum_required(VERSION 3.10)
 
-project(ddbs LANGUAGES CXX)
+project(ddbs LANGUAGES C CXX)
 
+set(CMAKE_C_STANDARD 11)
+set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
 set(CMAKE_BUILD_TYPE Debug)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+# ??
+# set (CMAKE_LIBRARY_PATH /usr/lib/x86_64-linux-gnu)
 
 # ------------------------------ SET BRPC --------------------------------------------
 
@@ -146,9 +151,12 @@ set_target_properties(SQLParser PROPERTIES IMPORTED_LOCATION_NOCONFIG "${SQLPars
 
 add_dependencies(SQLParser build_SQLParser)
 
-# ------------------------------ CLI -------------------------------------------
+# ------------------------------ Readline -----------------------------------------
 
-add_subdirectory(cli)
+find_path(READLINE_INCLUDE_PATH NAMES readline/readline.h)
+find_library(READLINE_LIB NAMES readline)
+
+include_directories(${READLINE_INCLUDE_PATH})
 
 # ------------------------------ Copy Resources -----------------------------------
 
@@ -164,9 +172,17 @@ file(GLOB db_sources
     src/db_server/*.cpp src/db_server/*.hpp 
 )
 
+file(GLOB kv_sources 
+    src/kv_server/*.cpp src/kv_server/*.hpp 
+)
+
 add_executable(client ${client_sources} ${PROTO_SRC} ${PROTO_HEADER})
-target_link_libraries(client ${BRPC_LIB} ${DYNAMIC_LIB} cli::cli)
+target_link_libraries(client ${BRPC_LIB} ${DYNAMIC_LIB} ${READLINE_LIB})
 
 add_executable(db ${db_sources} ${PROTO_SRC} ${PROTO_HEADER})
 target_include_directories(db PUBLIC sql-parser/src)
 target_link_libraries(db ${BRPC_LIB} ${DYNAMIC_LIB} SQLParser)
+
+add_executable(kv ${kv_sources} ${PROTO_SRC} ${PROTO_HEADER})
+target_include_directories(kv PUBLIC sql-parser/src)
+target_link_libraries(kv ${BRPC_LIB} ${DYNAMIC_LIB} SQLParser)

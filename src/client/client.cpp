@@ -1,6 +1,3 @@
-#include <cli/cli.h>
-#include <cli/clifilesession.h>
-
 #include <iostream>
 #include <thread>
 #include <gflags/gflags.h>
@@ -8,6 +5,7 @@
 #include <butil/time.h>
 #include <brpc/channel.h>
 #include "db.pb.h"
+#include "cli.hpp"
 
 DEFINE_string(attachment, "", "Carry this along with requests");
 DEFINE_string(protocol, "baidu_std", "Protocol type. Defined in src/brpc/options.proto");
@@ -51,6 +49,14 @@ std::string send_request(
     return ss.str();
 }
 
+std::string concate_msg(const std::string &msg_type, const std::vector<std::string> &msg_slice) {
+    std::stringstream ss;
+    ss << msg_type;
+    for (const auto &s: msg_slice)
+        ss << " " << s;
+    return ss.str();
+}
+
 int main(int argc, char *argv[]) {
     // setup brpc
     GFLAGS_NS::ParseCommandLineFlags(&argc, &argv, true);
@@ -75,53 +81,20 @@ int main(int argc, char *argv[]) {
         LOG(ERROR) << "Fail to initialize channel";
         exit(-1);
     }
+    
+    cli::Shell shell([&](const std::string &msg) -> void {
+        // std::string recv_msg = send_request(stub, "sql", msg, ++log_id);
+        printf("execute sql: %s\n", msg.c_str());
+    });
 
-    // setup cli
-    auto sqlMenu = std::make_unique< cli::Menu >( "sql" );
-    sqlMenu -> Insert(
-        "select",
-        [&](std::ostream& out, const std::string &s){ 
-            std::string msg = send_request(stub, "sql", "select " + s, ++log_id);
-            out << "execute SQL: select " << s << std::endl; 
-            out << msg << std::endl;
-        },
-        "execute select command" 
-    );
-
-    sqlMenu -> Insert(
-        "insert",
-        [&](std::ostream& out, const std::string &s){ out << "execute SQL: insert " << s << std::endl; },
-        "execute insert command" 
-    );
-
-    sqlMenu -> Insert(
-        "alter",
-        [&](std::ostream& out, const std::string &s){ out << "execute SQL: alter " << s << std::endl; },
-        "execute alter command" 
-    );
-
-    sqlMenu -> Insert(
-        "drop",
-        [&](std::ostream& out, const std::string &s){ out << "execute SQL: drop " << s << std::endl; },
-        "execute drop command" 
-    );
-
-    auto confMenu = std::make_unique< cli::Menu >( "conf" );
-
-    confMenu -> Insert(
+    shell.register_conf_cmd(
         "partition",
-        [&](std::ostream& out, const std::string &s){ out << "modify databse: partition " << s << std::endl; },
-        "partition table"
+        [&](const std::string &msg) -> void {
+            // std::string recv_msg = send_request(stub, "sql", msg, ++log_id);
+            printf("execute conf: %s\n", msg.c_str());
+        }
     );
 
-    sqlMenu -> Insert( std::move(confMenu) );
-
-    cli::Cli cli( std::move(sqlMenu) );
-    // global exit action
-    cli.ExitAction( [](auto& out){ out << "Goodbye.\n"; } );
-
-    cli::CliFileSession input(cli);
-    input.Start();
-
+    shell.run();
     return 0;
 }

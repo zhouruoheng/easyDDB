@@ -2,6 +2,7 @@
 #include <butil/logging.h>
 #include <brpc/server.h>
 #include "db.pb.h"
+#include "kv_manager.hpp"
 
 DEFINE_bool(echo_attachment, true, "Echo attachment as well");
 DEFINE_int32(port, 1234, "TCP Port of this server");
@@ -21,7 +22,7 @@ class ClientServiceImpl : public ClientService {
 public:
     ClientServiceImpl() {};
     virtual ~ClientServiceImpl() {};
-    virtual void Echo(google::protobuf::RpcController* cntl_base,
+    virtual void SendMsg(google::protobuf::RpcController* cntl_base,
                       const ClientRequest* request,
                       ClientResponse* response,
                       google::protobuf::Closure* done) {
