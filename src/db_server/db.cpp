@@ -4,6 +4,7 @@
 #include "db.pb.h"
 #include "kv_manager.hpp"
 
+// For ClientService
 DEFINE_bool(echo_attachment, true, "Echo attachment as well");
 DEFINE_int32(port, 1234, "TCP Port of this server");
 DEFINE_string(listen_addr, "", "Server listen address, may be IPV4/IPV6/UDS."
@@ -13,15 +14,26 @@ DEFINE_int32(idle_timeout_s, -1, "Connection will be closed if there is no "
 DEFINE_int32(logoff_ms, 2000, "Maximum duration of server's LOGOFF state "
              "(waiting for client to close connection before server stops)");
 
+// For KV-manager
+DEFINE_string(protocol, "baidu_std", "Protocol type. Defined in src/brpc/options.proto");
+DEFINE_string(connection_type, "", "Connection type. Available values: single, pooled, short");
+DEFINE_string(load_balancer, "", "The algorithm for load balancing");
+DEFINE_int32(timeout_ms, 100, "RPC timeout in milliseconds");
+DEFINE_int32(max_retry, 3, "Max retries(not including the first RPC)");
+
 // Your implementation of db::ClientService
 // Notice that implementing brpc::Describable grants the ability to put
 // additional information in /status.
 namespace db {
 
 class ClientServiceImpl : public ClientService {
+private:
+    KVManager manager;
 public:
-    ClientServiceImpl() {};
-    virtual ~ClientServiceImpl() {};
+    ClientServiceImpl() : manager() {};
+    virtual ~ClientServiceImpl() {
+        manager.~KVManager();
+    };
     virtual void SendMsg(google::protobuf::RpcController* cntl_base,
                       const ClientRequest* request,
                       ClientResponse* response,
