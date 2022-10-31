@@ -31,9 +31,7 @@ private:
     KVManager manager;
 public:
     ClientServiceImpl() : manager() {};
-    virtual ~ClientServiceImpl() {
-        manager.~KVManager();
-    };
+    virtual ~ClientServiceImpl() {};
     virtual void SendMsg(google::protobuf::RpcController* cntl_base,
                       const ClientRequest* request,
                       ClientResponse* response,
