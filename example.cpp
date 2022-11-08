@@ -11,37 +11,9 @@
 #include "hsql/sql/SelectStatement.h"
 #include "hsql/sql/Table.h"
 #include "hsql/sql/Expr.h"
+#include "utils.h"
 
 using namespace std;
-
-
-static const std::map<const hsql::OperatorType, const std::string> operatorToToken = {
-      {hsql::kOpEquals, "="},      {hsql::kOpNotEquals, "!="},
-      {hsql::kOpLess, "<"},        {hsql::kOpLessEq, "<="},
-      {hsql::kOpGreater, ">"},     {hsql::kOpGreaterEq, ">="},
-      {hsql::kOpAnd, "AND"}
-};
-
-
-class Condition{
-    public:
-		Condition(hsql::OperatorType _opt,string _table,string _attr){
-			auto found = operatorToToken.find(_opt);
-			opt=(*found).second;
-			table=_table;
-			attr=_attr;
-		}
-        string table, attr, opt, type; //type->int/string
-        int ival;
-        string sval;
-		void print(){
-			cout<<opt<<" "<<table<<" "<<attr<<" ";
-			if (type=="int")
-				cout<<ival<<endl;
-			else
-				cout<<sval<<endl;
-		}
-};
 
 vector<string> Table, Attr;
 vector<Condition> Predicate;
@@ -68,9 +40,7 @@ class Tree{
 bool get_Expression(hsql::Expr* expr)
 {
 	if (expr->type==hsql::kExprOperator) {
-		printf("AND\n");
 		bool mark= get_Expression(expr->expr)&get_Expression(expr->expr2);
-		printf(expr->name);
 		if (mark&&expr->opType!=hsql::kOpAnd){
 			if (expr->expr2->type==hsql::kExprColumnRef)
 				//printf("join\n");
