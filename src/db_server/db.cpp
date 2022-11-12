@@ -27,6 +27,7 @@ DEFINE_int32(max_retry, 3, "Max retries(not including the first RPC)");
 // additional information in /status.
 namespace db {
 
+
 class ClusterServiceImpl : public ClusterService {
 private:
     SiteManager manager;
@@ -109,4 +110,5 @@ int main(int argc, char* argv[]) {
     // Wait until Ctrl-C is pressed, then Stop() and Join() the server.
     server.RunUntilAskedToQuit();
     return 0;
+
 }

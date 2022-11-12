@@ -1,3 +1,4 @@
 [
-    {"addr": "localhost:1234", "site-name": "site-1"}
+    {"addr": "20.168.206.77:8848", "site-name": "ddb1"},
+    {"addr": "52.151.249.158:8848", "site-name": "ddb2"}
 ]

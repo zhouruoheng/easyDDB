@@ -16,7 +16,7 @@
 // under the License.
 
 syntax="proto2";
-package db;
+package jsonservice;
 
 option cc_generic_services = true;
 
@@ -29,19 +29,7 @@ message ClientResponse {
       required string msg = 1;
 };
 
-message ClusterRequest {
-      required string msg_type = 1;
-      required string msg = 2;
-}
 
-message ClusterResponse {
-      required string msg = 1;
-}
-
-service ClusterService {
+service JsonService {
       rpc SendClientMsg(ClientRequest) returns (ClientResponse);
-}
-
-service ExecutionService {
-      rpc SendExecutionMsg(ClusterRequest) returns (ClusterResponse);
 }
