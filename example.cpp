@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <algorithm>
 // include the sql parser
 #include "hsql/SQLParser.h"
 
@@ -13,22 +14,30 @@
 #include "hsql/sql/Expr.h"
 #include "utils.h"
 
+#define print(a) for (auto it=a.begin();it!=a.end();it++) cout<<*it<<" "; cout<<endl; 
+
 using namespace std;
 
-vector<string> Table, Attr;
-vector<Condition> Predicate;
+vector<string> fromTable, Select_Attr, All_Attr; //All_Attr所有涉及到的Attr
+vector<Condition> Predicate; //where中的非join条件
 vector<pair<string,string>> Join;  //存储所有的join条件
 
 class treeNode{
     public:
-       int parent;
-       vector<int> child;
-       string type; // Fragment,Union,Join
-       int site;
-       pair<string,int> fname;
-       string join;
-       vector<string> attr, projection;
-       vector<Condition> select;
+	    treeNode(string _type, int _site=1, vector<string> _attr={}, vector<Condition> _select={}){
+		   type=_type;
+		   site=_site;
+		   attr=_attr;
+		   select=_select;
+		}
+		int parent;
+		vector<int> child;
+		string type; // Fragment,Union,Join
+		int site;
+		pair<string,int> fname;
+		string join;
+		vector<string> attr, projection;
+		vector<Condition> select;
 };
 
 class Tree{
@@ -42,11 +51,17 @@ bool get_Expression(hsql::Expr* expr)
 	if (expr->type==hsql::kExprOperator) {
 		bool mark= get_Expression(expr->expr)&get_Expression(expr->expr2);
 		if (mark&&expr->opType!=hsql::kOpAnd){
-			if (expr->expr2->type==hsql::kExprColumnRef)
+			if (expr->expr2->type==hsql::kExprColumnRef){
 				//printf("join\n");
-				Join.push_back(make_pair(string(expr->expr->table)+'.'+string(expr->expr->name),string(expr->expr2->table)+'.'+string(expr->expr2->name)));
+				string left_attr=string(expr->expr->table)+'.'+string(expr->expr->name);
+				string right_attr=string(expr->expr2->table)+'.'+string(expr->expr2->name);
+				Join.push_back(make_pair(left_attr, right_attr));
+				All_Attr.push_back(left_attr);
+				All_Attr.push_back(right_attr);
+			}
 			else{
 				Condition cond=Condition(expr->opType,string(expr->expr->table),string(expr->expr->name));
+				All_Attr.push_back(string(expr->expr->table)+'.'+string(expr->expr->name));
 				if (expr->expr2->type==hsql::kExprLiteralString)
 					//printf("string\n");
 					cond.type="string",cond.sval=expr->expr2->name;
@@ -64,32 +79,86 @@ bool get_Expression(hsql::Expr* expr)
 
 void init_SQL(const hsql::SelectStatement* Statement)
 {
-	for (hsql::TableRef* tbl : *Statement->fromTable->list)
-		Table.push_back(tbl->name);
+	//printf("init\n");
+	//cout<<Statement->fromTable->name<<endl;
+	if (Statement->fromTable->type==hsql::kTableName)
+		fromTable.push_back(Statement->fromTable->name);
+	else
+		for (hsql::TableRef* tbl : *Statement->fromTable->list)
+			fromTable.push_back(tbl->name);
 	//for (int i=0;i<Table.size();i++)
 	//	cout<<Table[i]<<" ";
 	//cout<<endl;
+	//printf("from\n");
 	for (hsql::Expr* expr : *Statement->selectList)
 		switch (expr->type){
 			case hsql::kExprStar:
-				Attr.push_back("*");
+				Select_Attr.push_back("*");
 				break;
 			case hsql::kExprColumnRef:
 				string table=expr->table;
 				string column=expr->name;
-				Attr.push_back(table+'.'+column);
+				Select_Attr.push_back(table+'.'+column);
 				break;
 		}
-	//for (int i=0;i<Attr.size();i++)
-	//	cout<<Attr[i]<<" ";
-	//cout<<endl;
-	//hsql::printExpression(Statement->whereClause,0);
+	//printf("select & from finished!\n");
+	All_Attr=Select_Attr;
 	get_Expression(Statement->whereClause);
-	for (int i=0;i<Predicate.size();i++)
-		Predicate[i].print();
-	for (int i=0;i<Join.size();i++)
-		cout<<Join[i].first<<" "<<Join[i].second<<endl;
+	sort(All_Attr.begin(),All_Attr.end());
+	All_Attr.erase(unique(All_Attr.begin(),All_Attr.end()),All_Attr.end());
+	print(All_Attr);
 }
+
+
+vector<Condition> check_condition(vector<Condition> vf_condition)
+{
+	return vf_condition;
+}
+
+Tree build_query_tree()
+{
+	vector<metadataTable> Tables;
+	metadataTable Publisher=metadataTable("publisher","vf","id");
+	Publisher.attrs.push_back("id");
+	Publisher.attrs.push_back("name");
+	Publisher.attrs.push_back("nation");
+	Fragment frag1=Fragment(make_pair("publisher",1),1);
+	frag1.vf_condition.push_back(Condition("id<104000"));
+	frag1.vf_condition.push_back(Condition("nation=PRC"));
+	Fragment frag2=Fragment(make_pair("publisher",2),2);
+	frag2.vf_condition.push_back(Condition("id<104000"));
+	frag2.vf_condition.push_back(Condition("nation=USA"));
+	Publisher.frags.push_back(frag1);
+	Publisher.frags.push_back(frag2);
+	Tables.push_back(Publisher);
+	Tree query_tree;
+	for (auto table : Tables){
+		if (find(fromTable.begin(), fromTable.end(), table.name)==fromTable.end())
+			continue;
+		if (table.type=="vf"){
+			for (auto frag : table.frags){
+				vector<Condition> conditions=check_condition(frag.vf_condition);
+				if (conditions.size()==0)
+					continue;
+				query_tree.tr.push_back(treeNode("Fragment", frag.site, table.attrs, conditions));
+				cout<<frag.site<<endl;
+			}
+		}
+		else{
+			printf("hf");
+		}
+	}	
+	//join
+	//union
+	treeNode root = treeNode("Union", 1);
+	int num = query_tree.tr.size();
+	for (int i=0;i<num;i++) root.child.push_back(i), query_tree.tr[i].parent=num;
+	query_tree.tr.push_back(root);
+	query_tree.root=num;
+	return query_tree;
+}
+
+
 
 int main() {
     freopen("sql.in","r",stdin);
@@ -106,9 +175,12 @@ int main() {
 
     if (result.isValid()) {
         printf("Parsed successfully!\n");
-		//hsql::printStatementInfo(result.getStatement(0));
+		hsql::printStatementInfo(result.getStatement(0));
+		//cout<<"!!!"<<endl;
         const hsql::SelectStatement* Statement = (const hsql::SelectStatement*)result.getStatement(0);
+		//printf("!!!!!!!!\n");
 		init_SQL(Statement);
+		Tree query_tree=build_query_tree();
         return 0;
     } else {
         fprintf(stderr, "Given string is not a valid SQL query.\n");
