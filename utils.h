@@ -9,6 +9,17 @@ static const std::map<const hsql::OperatorType, const std::string> operatorToTok
       {hsql::kOpAnd, "AND"}
 };
 
+int str2int(string num)
+{
+	int ans=0;
+	for (auto str : num)
+		if (str>=48&&str<=57)
+			ans=ans*10+str-48;
+		else
+			return -1;
+	return ans;
+}
+
 class Condition{
     public:
 		Condition(hsql::OperatorType _opt,string _table,string _attr){
@@ -21,6 +32,22 @@ class Condition{
 			opt=_opt;
 			table=_table;
 			attr=_attr;
+		}
+		Condition(string cond){
+			vector<string> opts {"=",">","<",">=","<=","!="};
+			for (auto opti : opts)
+				if (cond.find(opti)!=-1){
+					opt=opti;
+					string cur=cond.substr(0,cond.find(opti));
+					table=cur.substr(0,cur.find("."));
+					attr=cur.substr(cur.find(".")+1);
+					cur=cond.substr(cond.find(opti)+opti.size());
+					ival=str2int(cur);
+					if (ival==-1)
+						type="string",sval=cur;
+					else
+						type="int";
+				}	
 		}
         string table, attr, opt, type; //type->int/string
         int ival;
@@ -36,11 +63,15 @@ class Condition{
 
 class Fragment{
 	public:
+		Fragment(pair<string,int> _fname, int _site){
+			fname=_fname;
+			site=_site;
+		}
 		pair<string,int> fname;
 		int site;
 		string type; // vf/hf
-		vector<string> vf_column;
-		vector<Condition> hf_condition;
+		vector<string> hf_column;
+		vector<Condition> vf_condition;
 };
 
 class Attribute{
@@ -53,8 +84,15 @@ class Attribute{
 
 class metadataTable{
 	public:
+		metadataTable(string _name, string _type, string _key){
+			name=_name;
+			type=_type;
+			key_column=_key;
+		}
 		string name,type;
 		int size;
+		string key_column;
 		vector<Fragment> frags;
-		vector<Attribute> attrs;
+		//vector<Attribute> attrs;
+		vector<string> attrs;
 };
