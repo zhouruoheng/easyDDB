@@ -15,6 +15,7 @@
 #include "utils.h"
 
 #define print(a) for (auto it=a.begin();it!=a.end();it++) cout<<*it<<" "; cout<<endl; 
+#define INF 1e9
 
 using namespace std;
 
@@ -81,38 +82,67 @@ void init_SQL(const hsql::SelectStatement* Statement)
 {
 	//printf("init\n");
 	//cout<<Statement->fromTable->name<<endl;
-	if (Statement->fromTable->type==hsql::kTableName)
-		fromTable.push_back(Statement->fromTable->name);
-	else
-		for (hsql::TableRef* tbl : *Statement->fromTable->list)
-			fromTable.push_back(tbl->name);
+	if (Statement->fromTable != nullptr){
+		if (Statement->fromTable->type==hsql::kTableName)
+			fromTable.push_back(Statement->fromTable->name);
+		else
+			for (hsql::TableRef* tbl : *Statement->fromTable->list)
+				fromTable.push_back(tbl->name);
+	}
 	//for (int i=0;i<Table.size();i++)
 	//	cout<<Table[i]<<" ";
 	//cout<<endl;
-	//printf("from\n");
-	for (hsql::Expr* expr : *Statement->selectList)
-		switch (expr->type){
-			case hsql::kExprStar:
-				Select_Attr.push_back("*");
-				break;
-			case hsql::kExprColumnRef:
-				string table=expr->table;
-				string column=expr->name;
-				Select_Attr.push_back(table+'.'+column);
-				break;
-		}
+	printf("from\n");
+	if (Statement->selectList != nullptr){
+		for (hsql::Expr* expr : *Statement->selectList)
+			switch (expr->type){
+				case hsql::kExprStar:
+					Select_Attr.push_back("*");
+					break;
+				case hsql::kExprColumnRef:
+					string table=expr->table;
+					string column=expr->name;
+					Select_Attr.push_back(table+'.'+column);
+					break;
+			}
+	}
 	//printf("select & from finished!\n");
 	All_Attr=Select_Attr;
-	get_Expression(Statement->whereClause);
+	if (Statement->whereClause != nullptr) get_Expression(Statement->whereClause);
 	sort(All_Attr.begin(),All_Attr.end());
 	All_Attr.erase(unique(All_Attr.begin(),All_Attr.end()),All_Attr.end());
 	print(All_Attr);
 }
 
 
-vector<Condition> check_condition(vector<Condition> vf_condition)
+vector<Condition> check_condition(vector<Condition> vf_condition, int &cnt)
 {
-	return vf_condition;
+	vector<Condition> intersection;
+	for (auto x : Predicate){
+		for (auto y : vf_condition){
+			int a1,b1,a2,b2;
+			//cout<<x.table<<" "<<x.attr<<" "<<y.table<<" "<<y.attr<<endl;
+			if (x.table != y.table || x.attr != y.attr) continue;
+			if (x.type == "string"){ 
+				if (x.sval == y.sval) intersection.push_back(y), cnt++;
+			}
+			x.get_section(a1,b1);
+			y.get_section(a2,b2);
+			//cout<<"["<<a1<<" "<<b1<<"]"<<endl;
+			//cout<<"["<<a2<<" "<<b2<<"]"<<endl;
+			int a=max(a1,a2), b=min(b1,b2);
+			if (a==a2&&b==b2) cnt++;
+			if (a<=b){
+				Condition inSec=y;
+				if (a!=-INF&&b!=INF&&a!=b) {
+					intersection.push_back(Condition(x.table, x.attr, a, INF));
+					intersection.push_back(Condition(x.table, x.attr, -INF, b));
+				}
+				else intersection.push_back(Condition(x.table, x.attr, a,b));
+			}
+		}
+	}
+	return intersection;
 }
 
 Tree build_query_tree()
@@ -123,11 +153,11 @@ Tree build_query_tree()
 	Publisher.attrs.push_back("name");
 	Publisher.attrs.push_back("nation");
 	Fragment frag1=Fragment(make_pair("publisher",1),1);
-	frag1.vf_condition.push_back(Condition("id<104000"));
-	frag1.vf_condition.push_back(Condition("nation=PRC"));
+	frag1.vf_condition.push_back(Condition("publisher.id<104000"));
+	frag1.vf_condition.push_back(Condition("publisher.nation=PRC"));
 	Fragment frag2=Fragment(make_pair("publisher",2),2);
-	frag2.vf_condition.push_back(Condition("id<104000"));
-	frag2.vf_condition.push_back(Condition("nation=USA"));
+	frag2.vf_condition.push_back(Condition("publisher.id<104000"));
+	frag2.vf_condition.push_back(Condition("publisher.nation=USA"));
 	Publisher.frags.push_back(frag1);
 	Publisher.frags.push_back(frag2);
 	Tables.push_back(Publisher);
@@ -137,10 +167,20 @@ Tree build_query_tree()
 			continue;
 		if (table.type=="vf"){
 			for (auto frag : table.frags){
-				vector<Condition> conditions=check_condition(frag.vf_condition);
-				if (conditions.size()==0)
-					continue;
-				query_tree.tr.push_back(treeNode("Fragment", frag.site, table.attrs, conditions));
+				int cnt=0;
+				vector<Condition> conditions=check_condition(frag.vf_condition, cnt);
+				//cout<<cnt<<endl;
+				if (conditions.size()==0&&Predicate.size()!=0) continue;
+				if (cnt==frag.vf_condition.size()) conditions={};
+				treeNode node=treeNode("Fragment", frag.site, table.attrs, conditions);
+				for (auto attr : table.attrs)
+					if (find(All_Attr.begin(), All_Attr.end(), table.name+"."+attr)!=All_Attr.end())
+						node.projection.push_back(attr);
+				//print(table.attrs)
+				print(node.projection);
+				if (node.projection.size()==table.attrs.size())
+					node.projection={};
+				query_tree.tr.push_back(node);
 				cout<<frag.site<<endl;
 			}
 		}

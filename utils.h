@@ -1,5 +1,5 @@
 #include <vector>
-
+#define INF 1e9
 using namespace std;
 
 static const std::map<const hsql::OperatorType, const std::string> operatorToToken = {
@@ -48,6 +48,23 @@ class Condition{
 					else
 						type="int";
 				}	
+		}
+		Condition(string _table, string _attr, int a, int b){
+			table=_table;
+			attr=_attr;
+			type="int";
+			if (a==-INF)
+				opt="<=", ival=b;
+			else if (b==INF)
+				opt=">=", ival=a;
+			else opt="=", ival=a;
+		}
+		void get_section(int &a, int &b){
+			if (opt=="=") a=ival,b=ival;
+			if (opt==">") a=ival+1,b=INF;
+			if (opt=="<") a=-INF,b=ival-1;
+			if (opt==">=") a=ival,b=INF;
+			if (opt=="<=") a=-INF,b=ival;
 		}
         string table, attr, opt, type; //type->int/string
         int ival;
