@@ -6,7 +6,7 @@
 
 // For ClusterService
 DEFINE_bool(echo_attachment, true, "Echo attachment as well");
-DEFINE_int32(port, 1234, "TCP Port of this server");
+DEFINE_int32(port, 6666, "TCP Port of this server");
 DEFINE_string(listen_addr, "", "Server listen address, may be IPV4/IPV6/UDS."
             " If this is set, the flag port will be ignored");
 DEFINE_int32(idle_timeout_s, -1, "Connection will be closed if there is no "
@@ -55,7 +55,8 @@ public:
                   << " (attached=" << cntl->request_attachment() << ")";
 
         // Fill response.
-        response->set_msg(request->msg());
+        char *response_message=db::deal_with_msg(request->msg_type(),request->msg());
+        response->set_msg(response_message);
 
         // You can compress the response by setting Controller, but be aware
         // that compression may be costly, evaluate before turning on.
@@ -67,9 +68,30 @@ public:
             cntl->response_attachment().append(cntl->request_attachment());
         }
     }
+    char* deal_with_msg(int msg_type, const std::string& msg);
 };
 
 }  // namespace db
+
+char* db::ClusterServiceImpl::deal_with_msg(int msg_type, const std::string& msg) {
+    char *response_message;
+    switch (msg_type) {
+        case 1:
+            response_message = db::ClusterManager::get_instance().get(msg);
+            break;
+        case 2:
+            response_message = db::ClusterManager::get_instance().put(msg);
+            break;
+        case 3:
+            response_message = db::ClusterManager::get_instance().del(msg);
+            break;
+        default:
+            response_message = "error";
+            break;
+    }
+    return response_message;}
+
+
 
 int main(int argc, char* argv[]) {
     // Parse gflags. We recommend you to use gflags as well.

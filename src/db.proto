@@ -38,10 +38,19 @@ message ClusterResponse {
       required string msg = 1;
 }
 
-service ClusterService {
-      rpc SendClientMsg(ClientRequest) returns (ClientResponse);
+message DataRequest {
+      required string msg_type=1;
+      required string msg=2;
 }
 
-service ExecutionService {
-      rpc SendExecutionMsg(ClusterRequest) returns (ClusterResponse);
+message DataResponse {
+      required string msg = 1;
 }
+
+
+service ClusterService {
+      rpc SendClientMsg(ClientRequest) returns (ClientResponse);
+      rpc SendClusterRequest(ClusterRequest) returns (ClusterResponse);
+      rpc SendSiteData(DataRequest) returns (DataResponse);
+}
+
