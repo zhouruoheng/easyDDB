@@ -8,10 +8,10 @@ int main(int argc,char *argv[])
     int res;
     mysql_init(&conn);
     //"root":数据库管理员 "123":root密码 "test":数据库的名字
-    if(mysql_real_connect(&conn, "localhost","root","123","test",0,NULL,CLIENT_FOUND_ROWS))
+    if(mysql_real_connect(&conn, "127.0.0.1","root","12345678","test",0,NULL,CLIENT_FOUND_ROWS))
     {
         cout << "connect success" << endl;
-        res = mysql_query(&conn, "insert into test values('user','123456')");
+        res = mysql_query(&conn, "create table test (id INT)");
     if(res)
     {
         printf("error\n");
