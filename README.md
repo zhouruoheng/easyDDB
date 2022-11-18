@@ -10,6 +10,7 @@ cd /home/mysql2
 
 ## login mysql
 mysql -u root -S /home/mysql1/mysql.sock -p
+
 mysql -u root -S /home/mysql2/mysql.sock -p
 
 
