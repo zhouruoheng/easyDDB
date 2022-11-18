@@ -1,6 +1,7 @@
 #include <bits/stdc++.h>
 #include <curl/curl.h>
 #include <json/json.h>
+#include "../optimizer/utils.h"
 
 using namespace std;
 using namespace Json;
