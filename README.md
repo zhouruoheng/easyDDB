@@ -14,4 +14,4 @@ mysql -u root -S /home/mysql2/mysql.sock -p
 
 
 ## Compile mysql_connector.cpp
-g++ mysql_connector.cpp `mysql_config --cflags --libs` -o mysql_connector
+g++ mysql_connector.cpp \`mysql_config --cflags --libs\` -o mysql_connector
