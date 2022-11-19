@@ -8,10 +8,10 @@
 存储主键 </table/publisher/key, "id">
 存储分片类型 </table/publisher/schema, "hf">
 存储分片的数量 </table/publisher/fragment_num, 4>
-存储分片上的列（垂直分片） <table/customer/fragment/site/1, "id,name">
-存储水平分片的条件 </table/publisher/fragment/site/1, "id<104000 and nation=PRC">
-存储分片上的数据量 </table/publisher/fragment/site/size, 100>
-存储分片所在的位置 </table/publisher/fragment/site/1, 1> 1号分片在1号站点
+存储分片上的列（垂直分片） <table/customer/fragment/1/columns, "id,name">
+存储水平分片的条件 </table/publisher/fragment/1/conditions, "id<104000,nation=PRC">
+存储分片上的数据量 </table/publisher/fragment/1/size, 100>
+存储分片所在的位置 </table/publisher/fragment/1/pos, 1> 1号分片在1号站点
 */
 
 

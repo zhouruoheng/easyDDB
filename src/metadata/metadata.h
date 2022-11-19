@@ -2,6 +2,7 @@
 #include <curl/curl.h>
 #include <json/json.h>
 #include "../optimizer/utils.h"
+#include <stdlib.h>
 
 using namespace std;
 using namespace Json;
@@ -116,18 +117,13 @@ string json2string(string inputStr)
     return DecodeBase64(cur.substr(1, cur.size()-3));
 }
 
-vector<metadataTable> getTables()
-{
-
-}
-
 size_t write_data(void *buffer, size_t size, size_t nmemb, void *stream) 
 { 
     strncat((char*)stream,(char*)buffer,size*nmemb);
     return nmemb*size; 
 } 
 
-string etcd_opt(string &data,string &op) 
+string etcd_opt(string data,string op) 
 {
     string etcd_url = "http://127.0.0.1:2379/v3/kv/";
     if(op == "PUT"){
@@ -178,5 +174,31 @@ string etcd_opt(string &data,string &op)
     curl_global_cleanup();  
 
     return string(result);
+}
+
+vector<metadataTable> getTables()
+{
+    vector<metadataTable> Tabs;
+    vector<string> tab=string2list(json2string(etcd_opt(string2json("/table",""), "GET")));
+    for (auto x : tab){
+        string key = json2string(etcd_opt(string2json("/table/"+x+"/key",""), "GET"));
+        string type = json2string(etcd_opt(string2json("/table/"+x+"/schema",""), "GET"));
+        metadataTable temp=metadataTable(x, type, key);
+        temp.attrs = string2list(json2string(etcd_opt(string2json("/table/"+x+"/attr",""), "GET")));
+        int fragNum = atoi(json2string(etcd_opt(string2json("/table/"+x+"/fragment_num",""), "GET")).c_str());
+        for (int i=1;i<=fragNum;i++){
+            string url = "/table/"+x+"/fragment/"+to_string(i)+"/";
+            int pos = atoi(json2string(etcd_opt(string2json(url+"pos",""), "GET")).c_str());
+            Fragment fr = Fragment(make_pair(x,1), pos, type);
+            if (type=="hf") {
+                vector<string> cons = string2list(json2string(etcd_opt(string2json(url+"conditions",""), "GET")));
+                for (auto con : cons) fr.hf_condition.push_back(Condition(con));
+            }
+            else fr.vf_column = string2list(json2string(etcd_opt(string2json(url+"columns",""), "GET")));
+            temp.frags.push_back(fr);
+        }
+        Tabs.push_back(temp);
+    }
+    return Tabs;
 }
 
