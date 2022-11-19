@@ -81,6 +81,46 @@ string DecodeBase64(const string inputStr)
     return strDecode;
 }
 
+vector<string> string2list(string inputStr)
+{
+    stringstream Str(inputStr);
+    vector<string> temp;
+    string cur;
+    while(getline(Str, cur, ',')) temp.push_back(cur);
+    return temp;
+}
+
+string string2json(string key, string value)
+{
+    string cur;
+    if (value.size()) cur = "{\"key\": \""+EncodeBase64(key)+"\", \"value\": \""+EncodeBase64(value)+"\"}";
+    else cur = "{\"key\":\""+EncodeBase64(key)+"\"}";
+    return cur;
+}
+
+string json2string(string inputStr)
+{
+    Value root, node;
+    Reader reader;
+    FastWriter writer;
+    if (!reader.parse(inputStr, root)){
+        cout<<"Parse json error"<<endl;
+        return "";
+    }
+    string nodeStr = writer.write(root["kvs"]);
+    if (!reader.parse(nodeStr.substr(1,nodeStr.size()-2), node)){
+        cout<<"Parse json error"<<endl;
+        return "";
+    }
+    string cur = writer.write(node["value"]);
+    return DecodeBase64(cur.substr(1, cur.size()-3));
+}
+
+vector<metadataTable> getTables()
+{
+
+}
+
 size_t write_data(void *buffer, size_t size, size_t nmemb, void *stream) 
 { 
     strncat((char*)stream,(char*)buffer,size*nmemb);
@@ -139,3 +179,4 @@ string etcd_opt(string &data,string &op)
 
     return string(result);
 }
+

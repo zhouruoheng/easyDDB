@@ -19,13 +19,14 @@ int main(){
 	string str = EncodeBase64("hellosite1");
 	cout<<str<<endl;
 	cout<<DecodeBase64(str)<<endl;
-	string t =  "{\"key\": \""+EncodeBase64("test")+"\", \"value\": \""+EncodeBase64("hello etcd")+"\"}";
-    string op = "PUT";
-    string res = etcd_opt(t,op);  //res is json string
-	cout<<res<<endl;
+	string t, op, res;
+	//string t =  "{\"key\": \""+EncodeBase64("test")+"\", \"value\": \""+EncodeBase64("hello etcd")+"\"}";
+    //string op = "PUT";
+    //string res = etcd_opt(t,op);  //res is json string
+	//cout<<res<<endl;
 	t = "{\"key\":\""+EncodeBase64("test")+"\"}";
 	op = "GET";
 	res = etcd_opt(t, op);
-	cout<<res<<endl;
+	cout<<json2string(res)<<endl;
 	return 0;
 }
