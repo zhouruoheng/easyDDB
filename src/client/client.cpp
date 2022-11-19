@@ -46,7 +46,7 @@ std::string send_request(
     } else {
         ss << cntl.ErrorText();
     }
-    return ss.str();
+    return ss.str(); 
 }
 
 int main(int argc, char *argv[]) {

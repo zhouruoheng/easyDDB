@@ -47,6 +47,10 @@ class Tree{
         int root;
 };
 
+class Query{
+	
+}
+
 bool get_Expression(hsql::Expr* expr)
 {
 	if (expr->type==hsql::kExprOperator) {

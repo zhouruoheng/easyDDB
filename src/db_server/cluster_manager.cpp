@@ -1,4 +1,4 @@
-#include "cluster_manager.hpp"
+#include "cluster_manager.h"
 
 #include <fstream>
 #include <butil/logging.h>

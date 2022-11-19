@@ -2,7 +2,9 @@
 #include <butil/logging.h>
 #include <brpc/server.h>
 #include "db.pb.h"
-#include "cluster_manager.hpp"
+#include "cluster_manager.h"
+#include "executor.h"
+#include "site_task_executor.h"
 
 // For ClusterService
 DEFINE_bool(echo_attachment, true, "Echo attachment as well");
@@ -55,7 +57,7 @@ public:
                   << " (attached=" << cntl->request_attachment() << ")";
 
         // Fill response.
-        char *response_message=db::deal_with_msg(request->msg_type(),request->msg());
+        char *response_message=deal_with_msg(request->msg_type(),request->msg());
         response->set_msg(response_message);
 
         // You can compress the response by setting Controller, but be aware
@@ -76,20 +78,26 @@ public:
 char* db::ClusterServiceImpl::deal_with_msg(int msg_type, const std::string& msg) {
     char *response_message;
     switch (msg_type) {
-        case 1:
-            response_message = db::ClusterManager::get_instance().get(msg);
+        case "sql":
+            response_message = db::exe::sql_execute(msg);//这里是对sql语句的处理，会写到executor.h中
             break;
-        case 2:
-            response_message = db::ClusterManager::get_instance().put(msg);
+        case "conf":
+            response_message = db::exe::config(msg);//这里是对配置信息的处理，会写到executor.h中
+            break; 
+        case "data":
+            response_message = db::exe::data_fetch(msg);//这里是对数据请求的的处理，会写到site_executor.h中
             break;
-        case 3:
-            response_message = db::ClusterManager::get_instance().del(msg);
+        case "order":
+            response_message = db::exe::site_execute(msg);//这里是对site的执行的处理，会写到site_executor.h中
             break;
         default:
             response_message = "error";
             break;
     }
-    return response_message;}
+    return response_message;
+}
+
+
 
 
 

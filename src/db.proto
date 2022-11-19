@@ -29,28 +29,10 @@ message ClientResponse {
       required string msg = 1;
 };
 
-message ClusterRequest {
-      required string msg_type = 1;
-      required string msg = 2;
-}
 
-message ClusterResponse {
-      required string msg = 1;
-}
-
-message DataRequest {
-      required string msg_type=1;
-      required string msg=2;
-}
-
-message DataResponse {
-      required string msg = 1;
-}
 
 
 service ClusterService {
       rpc SendClientMsg(ClientRequest) returns (ClientResponse);
-      rpc SendClusterRequest(ClusterRequest) returns (ClusterResponse);
-      rpc SendSiteData(DataRequest) returns (DataResponse);
 }
 
