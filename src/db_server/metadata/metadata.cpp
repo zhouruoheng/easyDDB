@@ -234,17 +234,17 @@ vector<metadataTable> getTables()
 
 
 
-int main(){
-	string t, op, res;
-	//string t =  "{\"key\": \""+EncodeBase64("test")+"\", \"value\": \""+EncodeBase64("hello etcd")+"\"}";
-    //string op = "PUT";
-    //string res = etcd_opt(t,op);  //res is json string
-	//cout<<res<<endl;
-	t = "{\"key\":\""+EncodeBase64("/table/publisher/fragment/4/conditions")+"\"}";
-	op = "GET";
-	res = etcd_opt(t, op);
-	cout<<json2string(res)<<endl;
-	//putTables();
-	vector<metadataTable> Tabs=getTables();
-	return 0;
-}
+// int main(){
+// 	string t, op, res;
+// 	//string t =  "{\"key\": \""+EncodeBase64("test")+"\", \"value\": \""+EncodeBase64("hello etcd")+"\"}";
+//     //string op = "PUT";
+//     //string res = etcd_opt(t,op);  //res is json string
+// 	//cout<<res<<endl;
+// 	t = "{\"key\":\""+EncodeBase64("/table/publisher/fragment/4/conditions")+"\"}";
+// 	op = "GET";
+// 	res = etcd_opt(t, op);
+// 	cout<<json2string(res)<<endl;
+// 	//putTables();
+// 	vector<metadataTable> Tabs=getTables();
+// 	return 0;
+// }

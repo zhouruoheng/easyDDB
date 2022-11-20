@@ -4,7 +4,7 @@
 #include "db.pb.h"
 #include "cluster_manager.h"
 #include "mysql_connector/mysql_connector.h"
-#include "query_optimizer.h"
+#include "optimizer/preprocess.h"
 
 // For ClusterService
 DEFINE_bool(echo_attachment, true, "Echo attachment as well");

@@ -21,7 +21,7 @@
 #define INF 1e9
 
 using namespace std;
-
+namespace db::opt{
 vector<string> fromTable, Select_Attr, All_Attr; // All_Attr所有涉及到的Attr
 vector<Condition> Predicate;					 // where中的非join条件
 vector<pair<string, string>> Join;				 //存储所有的join条件
@@ -134,12 +134,12 @@ void init_SQL(const hsql::SelectStatement *Statement)
 	print(All_Attr);
 }
 
-vector<Condition> check_condition(vector<Condition> vf_condition, int &cnt)
+vector<Condition> check_condition(vector<Condition> hf_condition, int &cnt)
 {
 	vector<Condition> intersection;
 	for (auto x : Predicate)
 	{
-		for (auto y : vf_condition)
+		for (auto y : hf_condition)
 		{
 			int a1, b1, a2, b2;
 			// cout<<x.table<<" "<<x.attr<<" "<<y.table<<" "<<y.attr<<endl;
@@ -176,16 +176,16 @@ vector<Condition> check_condition(vector<Condition> vf_condition, int &cnt)
 Tree build_query_tree()
 {
 	vector<metadataTable> Tables;
-	metadataTable Publisher = metadataTable("publisher", "vf", "id");
+	metadataTable Publisher = metadataTable("publisher", "hf", "id");
 	Publisher.attrs.push_back("id");
 	Publisher.attrs.push_back("name");
 	Publisher.attrs.push_back("nation");
-	Fragment frag1 = Fragment(make_pair("publisher", 1), 1);
-	frag1.vf_condition.push_back(Condition("publisher.id<104000"));
-	frag1.vf_condition.push_back(Condition("publisher.nation=PRC"));
-	Fragment frag2 = Fragment(make_pair("publisher", 2), 2);
-	frag2.vf_condition.push_back(Condition("publisher.id<104000"));
-	frag2.vf_condition.push_back(Condition("publisher.nation=USA"));
+	Fragment frag1 = Fragment(make_pair("publisher", 1), 1,"hf");
+	frag1.hf_condition.push_back(Condition("publisher.id<104000"));
+	frag1.hf_condition.push_back(Condition("publisher.nation=PRC"));
+	Fragment frag2 = Fragment(make_pair("publisher", 2), 2,"hf");
+	frag2.hf_condition.push_back(Condition("publisher.id<104000"));
+	frag2.hf_condition.push_back(Condition("publisher.nation=USA"));
 	Publisher.frags.push_back(frag1);
 	Publisher.frags.push_back(frag2);
 	Tables.push_back(Publisher);
@@ -194,16 +194,16 @@ Tree build_query_tree()
 	{
 		if (find(fromTable.begin(), fromTable.end(), table.name) == fromTable.end())
 			continue;
-		if (table.type == "vf")
+		if (table.type == "hf")
 		{
 			for (auto frag : table.frags)
 			{
 				int cnt = 0;
-				vector<Condition> conditions = check_condition(frag.vf_condition, cnt);
+				vector<Condition> conditions = check_condition(frag.hf_condition, cnt);
 				// cout<<cnt<<endl;
 				if (conditions.size() == 0 && Predicate.size() != 0)
 					continue;
-				if (cnt == frag.vf_condition.size())
+				if (cnt == frag.hf_condition.size())
 					conditions = {};
 				treeNode node = treeNode("Fragment", frag.site, table.attrs, conditions);
 				for (auto attr : table.attrs)
@@ -232,7 +232,7 @@ Tree build_query_tree()
 	query_tree.root = num;
 	return query_tree;
 }
-
+}
 // int main()
 // {
 // 	freopen("sql.in", "r", stdin);
