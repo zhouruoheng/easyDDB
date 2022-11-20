@@ -1,14 +1,18 @@
 #pragma once
+
 #include <vector>
 #include "SQLParser.h"
+
 #define INF 1e9
 
 using namespace std;
 
 static const std::map<const hsql::OperatorType, const std::string> operatorToToken = {
-	{hsql::kOpEquals, "="}, {hsql::kOpNotEquals, "!="}, {hsql::kOpLess, "<"}, {hsql::kOpLessEq, "<="}, {hsql::kOpGreater, ">"}, {hsql::kOpGreaterEq, ">="}, {hsql::kOpAnd, "AND"}};
+	{hsql::kOpEquals, "="}, {hsql::kOpNotEquals, "!="}, {hsql::kOpLess, "<"}, {hsql::kOpLessEq, "<="}, {hsql::kOpGreater, ">"}, {hsql::kOpGreaterEq, ">="}, {hsql::kOpAnd, "AND"}
+};
 
-int ddbstr2int(string num)
+template<typename T>
+int ddbstr2int(T num)
 {
 	int ans = 0;
 	for (auto str : num)

@@ -1,7 +1,9 @@
 #include "mysql_connector.h"
 using namespace std;
 
-vector<string> db::mysql::string2list(string inputStr, char split)
+namespace db::mysql {
+
+vector<string> string2list(string inputStr, char split)
 {
     stringstream Str(inputStr);
     vector<string> temp;
@@ -11,7 +13,7 @@ vector<string> db::mysql::string2list(string inputStr, char split)
     return temp;
 }
 
-string db::mysql::select_sql(string site, string sql)
+string select_sql(string site, string sql)
 {
     int PORT;
     char *UNIX_SOCKET;
@@ -80,6 +82,7 @@ string create_insert_delete_sql(string site, string sql)
     }
 }
 
+}
 // int main()
 // {
 //     string query_res=db::mysql::select_sql("ddb0","select name,nation from publisher");

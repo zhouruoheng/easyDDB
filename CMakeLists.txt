@@ -210,7 +210,12 @@ add_executable(client ${client_sources} ${PROTO_SRC} ${PROTO_HEADER})
 target_link_libraries(client ${BRPC_LIB} ${DYNAMIC_LIB} ${READLINE_LIB})
 
 add_executable(db ${db_sources} ${PROTO_SRC} ${PROTO_HEADER} ${optimizer_sources})
-target_include_directories(db PUBLIC sql-parser/src ${CURL_INCLUDE_DIR})
+target_include_directories(db PUBLIC  
+    src/db_server
+    sql-parser/src
+    ${MySQL_INCLUDE_PATH}
+    ${JSONCPP_INCLUDE_PATH}
+)
 target_link_libraries(db 
     ${BRPC_LIB} 
     ${DYNAMIC_LIB}
