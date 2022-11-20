@@ -30,8 +30,6 @@ message ClientResponse {
 };
 
 
-
-
 service ClusterService {
       rpc SendClientMsg(ClientRequest) returns (ClientResponse);
 }

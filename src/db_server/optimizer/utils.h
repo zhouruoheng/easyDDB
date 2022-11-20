@@ -1,5 +1,7 @@
 #include <vector>
+#include "SQLParser.h"
 #define INF 1e9
+
 using namespace std;
 
 static const std::map<const hsql::OperatorType, const std::string> operatorToToken = {

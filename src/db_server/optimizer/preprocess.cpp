@@ -4,7 +4,15 @@
 #include <vector>
 #include <map>
 #include <algorithm>
-#include "query_optimizer.h"
+// include the sql parser
+#include "SQLParser.h"
+
+// contains printing utilities
+#include "util/sqlhelper.h"
+#include "sql/SelectStatement.h"
+#include "sql/Table.h"
+#include "sql/Expr.h"
+#include "utils.h"
 
 #define print(a)                                   \
 	for (auto it = a.begin(); it != a.end(); it++) \
@@ -13,12 +21,45 @@
 #define INF 1e9
 
 using namespace std;
-using namespace db::opt;
+
 vector<string> fromTable, Select_Attr, All_Attr; // All_Attr所有涉及到的Attr
 vector<Condition> Predicate;					 // where中的非join条件
 vector<pair<string, string>> Join;				 //存储所有的join条件
 
-bool get_Expression(hsql::Expr *expr)
+class treeNode
+{
+public:
+	treeNode(string _type, int _site = 1, vector<string> _attr = {}, vector<Condition> _select = {})
+	{
+		type = _type;
+		site = _site;
+		attr = _attr;
+		select = _select;
+	}
+	int parent;
+	vector<int> child;
+	string type; // Fragment,Union,Join
+	int site;
+	pair<string, int> fname;
+	string join;
+	vector<string> attr, projection;
+	vector<Condition> select;
+};
+
+class Tree
+{
+public:
+	vector<treeNode> tr;
+	int root;
+};
+
+class Query
+{
+
+};
+
+bool
+get_Expression(hsql::Expr *expr)
 {
 	if (expr->type == hsql::kExprOperator)
 	{
@@ -132,7 +173,7 @@ vector<Condition> check_condition(vector<Condition> vf_condition, int &cnt)
 	return intersection;
 }
 
-db::opt::Tree db::opt::build_query_tree()
+Tree build_query_tree()
 {
 	vector<metadataTable> Tables;
 	metadataTable Publisher = metadataTable("publisher", "vf", "id");
@@ -164,7 +205,7 @@ db::opt::Tree db::opt::build_query_tree()
 					continue;
 				if (cnt == frag.vf_condition.size())
 					conditions = {};
-				db::opt::treeNode node = db::opt::treeNode("Fragment", frag.site, table.attrs, conditions);
+				treeNode node = treeNode("Fragment", frag.site, table.attrs, conditions);
 				for (auto attr : table.attrs)
 					if (find(All_Attr.begin(), All_Attr.end(), table.name + "." + attr) != All_Attr.end())
 						node.projection.push_back(attr);
