@@ -232,8 +232,6 @@ vector<metadataTable> getTables()
 }
 
 
-
-
 // int main(){
 // 	string t, op, res;
 // 	//string t =  "{\"key\": \""+EncodeBase64("test")+"\", \"value\": \""+EncodeBase64("hello etcd")+"\"}";

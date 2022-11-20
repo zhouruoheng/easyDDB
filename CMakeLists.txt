@@ -163,6 +163,24 @@ include_directories(${READLINE_INCLUDE_PATH})
 set(JSON_BuildTests OFF CACHE INTERNAL "")
 add_subdirectory(nlohmann_json)
 
+# ------------------------------ curl ---------------------------------------------
+
+find_package(CURL REQUIRED)
+
+# ------------------------------ MySQL -------------------------------------------
+
+find_path(MySQL_INCLUDE_PATH NAMES mysql/mysql.h)
+find_library(MySQL_LIB NAMES mysqlclient)
+
+include_directories(${MySQL_INCLUDE_PATH})
+
+# ------------------------------ jsoncpp -----------------------------------------
+
+find_path(JSONCPP_INCLUDE_PATH NAMES json/json.h)
+find_library(JSONCPP_LIB NAMES jsoncpp)
+
+include_directories(${JSONCPP_INCLUDE_PATH})
+
 # ------------------------------ Copy Resources -----------------------------------
 
 file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/res DESTINATION ${CMAKE_BINARY_DIR})
@@ -192,5 +210,13 @@ add_executable(client ${client_sources} ${PROTO_SRC} ${PROTO_HEADER})
 target_link_libraries(client ${BRPC_LIB} ${DYNAMIC_LIB} ${READLINE_LIB})
 
 add_executable(db ${db_sources} ${PROTO_SRC} ${PROTO_HEADER} ${optimizer_sources})
-target_include_directories(db PUBLIC sql-parser/src)
-target_link_libraries(db ${BRPC_LIB} ${DYNAMIC_LIB} SQLParser nlohmann_json::nlohmann_json)
+target_include_directories(db PUBLIC sql-parser/src ${CURL_INCLUDE_DIR})
+target_link_libraries(db 
+    ${BRPC_LIB} 
+    ${DYNAMIC_LIB}
+    ${MySQL_LIB}
+    ${JSONCPP_LIB}
+    SQLParser 
+    nlohmann_json::nlohmann_json
+    CURL::libcurl
+)
