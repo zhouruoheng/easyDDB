@@ -82,15 +82,16 @@ class Condition{
 
 class Fragment{
 	public:
-		Fragment(pair<string,int> _fname, int _site){
+		Fragment(pair<string,int> _fname, int _site, string _type){
 			fname=_fname;
 			site=_site;
+			type=_type;
 		}
 		pair<string,int> fname;
 		int site;
 		string type; // vf/hf
-		vector<string> hf_column;
-		vector<Condition> vf_condition;
+		vector<string> vf_column;
+		vector<Condition> hf_condition;
 };
 
 class Attribute{
