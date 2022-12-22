@@ -52,8 +52,8 @@ namespace db
 
     string data_push(int node_id, string sql, const SiteManager &manager, string site_name)
     {
-        string datamsg = std::to_string(node_id) + "," + db::mysql::select_sql(site_name, sql);
-        string result = send_site_message(site_name, "data_push", datamsg, node_id + 10000, manager);
+        string datamsg = std::to_string(node_id) + "," + db::mysql::select_sql(site_name, sql);//获取数据并打包
+        string result = send_site_message(site_name, "data_push", datamsg, node_id + 10000, manager);//发送数据
         return result;
     } // 这个函数是在data_site_name上执行sql语句，将结果返回到site_name上,data_push的result一般是ok
 
@@ -244,7 +244,7 @@ namespace db
             ss << cntl.ErrorText();
         }
         return ss.str();
-    }
+    }//发送数据到site
 
     string site_execute(string msg, const SiteManager &manager)
     {
