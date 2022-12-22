@@ -1,0 +1,52 @@
+[
+{
+  "directory": "/home/ruoheng/ddb/easyDDB",
+  "command": "/usr/bin/c++  -I/home/ruoheng/ddb/easyDDB -I/home/ruoheng/ddb/easyDDB/brpc/build/output/include  -DGFLAGS_NS=google -DNDEBUG -O2 -D__const__=__unused__ -pipe -W -Wall -Wno-unused-parameter -fPIC -fno-omit-frame-pointer -g -std=gnu++11 -o CMakeFiles/client.dir/src/client/cli.cpp.o -c /home/ruoheng/ddb/easyDDB/src/client/cli.cpp",
+  "file": "/home/ruoheng/ddb/easyDDB/src/client/cli.cpp"
+},
+{
+  "directory": "/home/ruoheng/ddb/easyDDB",
+  "command": "/usr/bin/c++  -I/home/ruoheng/ddb/easyDDB -I/home/ruoheng/ddb/easyDDB/brpc/build/output/include  -DGFLAGS_NS=google -DNDEBUG -O2 -D__const__=__unused__ -pipe -W -Wall -Wno-unused-parameter -fPIC -fno-omit-frame-pointer -g -std=gnu++11 -o CMakeFiles/client.dir/src/client/client.cpp.o -c /home/ruoheng/ddb/easyDDB/src/client/client.cpp",
+  "file": "/home/ruoheng/ddb/easyDDB/src/client/client.cpp"
+},
+{
+  "directory": "/home/ruoheng/ddb/easyDDB",
+  "command": "/usr/bin/c++  -I/home/ruoheng/ddb/easyDDB -I/home/ruoheng/ddb/easyDDB/brpc/build/output/include  -DGFLAGS_NS=google -DNDEBUG -O2 -D__const__=__unused__ -pipe -W -Wall -Wno-unused-parameter -fPIC -fno-omit-frame-pointer -g -std=gnu++11 -o CMakeFiles/client.dir/db.pb.cc.o -c /home/ruoheng/ddb/easyDDB/db.pb.cc",
+  "file": "/home/ruoheng/ddb/easyDDB/db.pb.cc"
+},
+{
+  "directory": "/home/ruoheng/ddb/easyDDB",
+  "command": "/usr/bin/c++  -I/home/ruoheng/ddb/easyDDB -I/home/ruoheng/ddb/easyDDB/brpc/build/output/include  -DGFLAGS_NS=google -DNDEBUG -O2 -D__const__=__unused__ -pipe -W -Wall -Wno-unused-parameter -fPIC -fno-omit-frame-pointer -g -std=gnu++11 -o CMakeFiles/db.dir/src/db_server/aug_plan_executor.cpp.o -c /home/ruoheng/ddb/easyDDB/src/db_server/aug_plan_executor.cpp",
+  "file": "/home/ruoheng/ddb/easyDDB/src/db_server/aug_plan_executor.cpp"
+},
+{
+  "directory": "/home/ruoheng/ddb/easyDDB",
+  "command": "/usr/bin/c++  -I/home/ruoheng/ddb/easyDDB -I/home/ruoheng/ddb/easyDDB/brpc/build/output/include  -DGFLAGS_NS=google -DNDEBUG -O2 -D__const__=__unused__ -pipe -W -Wall -Wno-unused-parameter -fPIC -fno-omit-frame-pointer -g -std=gnu++11 -o CMakeFiles/db.dir/src/db_server/aug_planner.cpp.o -c /home/ruoheng/ddb/easyDDB/src/db_server/aug_planner.cpp",
+  "file": "/home/ruoheng/ddb/easyDDB/src/db_server/aug_planner.cpp"
+},
+{
+  "directory": "/home/ruoheng/ddb/easyDDB",
+  "command": "/usr/bin/c++  -I/home/ruoheng/ddb/easyDDB -I/home/ruoheng/ddb/easyDDB/brpc/build/output/include  -DGFLAGS_NS=google -DNDEBUG -O2 -D__const__=__unused__ -pipe -W -Wall -Wno-unused-parameter -fPIC -fno-omit-frame-pointer -g -std=gnu++11 -o CMakeFiles/db.dir/src/db_server/cluster_manager.cpp.o -c /home/ruoheng/ddb/easyDDB/src/db_server/cluster_manager.cpp",
+  "file": "/home/ruoheng/ddb/easyDDB/src/db_server/cluster_manager.cpp"
+},
+{
+  "directory": "/home/ruoheng/ddb/easyDDB",
+  "command": "/usr/bin/c++  -I/home/ruoheng/ddb/easyDDB -I/home/ruoheng/ddb/easyDDB/brpc/build/output/include  -DGFLAGS_NS=google -DNDEBUG -O2 -D__const__=__unused__ -pipe -W -Wall -Wno-unused-parameter -fPIC -fno-omit-frame-pointer -g -std=gnu++11 -o CMakeFiles/db.dir/src/db_server/db.cpp.o -c /home/ruoheng/ddb/easyDDB/src/db_server/db.cpp",
+  "file": "/home/ruoheng/ddb/easyDDB/src/db_server/db.cpp"
+},
+{
+  "directory": "/home/ruoheng/ddb/easyDDB",
+  "command": "/usr/bin/c++  -I/home/ruoheng/ddb/easyDDB -I/home/ruoheng/ddb/easyDDB/brpc/build/output/include  -DGFLAGS_NS=google -DNDEBUG -O2 -D__const__=__unused__ -pipe -W -Wall -Wno-unused-parameter -fPIC -fno-omit-frame-pointer -g -std=gnu++11 -o CMakeFiles/db.dir/src/db_server/query_optimizer.cpp.o -c /home/ruoheng/ddb/easyDDB/src/db_server/query_optimizer.cpp",
+  "file": "/home/ruoheng/ddb/easyDDB/src/db_server/query_optimizer.cpp"
+},
+{
+  "directory": "/home/ruoheng/ddb/easyDDB",
+  "command": "/usr/bin/c++  -I/home/ruoheng/ddb/easyDDB -I/home/ruoheng/ddb/easyDDB/brpc/build/output/include  -DGFLAGS_NS=google -DNDEBUG -O2 -D__const__=__unused__ -pipe -W -Wall -Wno-unused-parameter -fPIC -fno-omit-frame-pointer -g -std=gnu++11 -o CMakeFiles/db.dir/src/db_server/site_task_executor.cpp.o -c /home/ruoheng/ddb/easyDDB/src/db_server/site_task_executor.cpp",
+  "file": "/home/ruoheng/ddb/easyDDB/src/db_server/site_task_executor.cpp"
+},
+{
+  "directory": "/home/ruoheng/ddb/easyDDB",
+  "command": "/usr/bin/c++  -I/home/ruoheng/ddb/easyDDB -I/home/ruoheng/ddb/easyDDB/brpc/build/output/include  -DGFLAGS_NS=google -DNDEBUG -O2 -D__const__=__unused__ -pipe -W -Wall -Wno-unused-parameter -fPIC -fno-omit-frame-pointer -g -std=gnu++11 -o CMakeFiles/db.dir/db.pb.cc.o -c /home/ruoheng/ddb/easyDDB/db.pb.cc",
+  "file": "/home/ruoheng/ddb/easyDDB/db.pb.cc"
+}
+]

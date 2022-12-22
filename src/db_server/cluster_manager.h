@@ -33,7 +33,7 @@ public:
     std::map<std::string, std::shared_ptr<SiteClient>> site_dict; // name to index
     std::vector<std::shared_ptr<SiteClient>> sites;
     std::string local_site_name;
-
+    
     SiteManager(const std::string &_local_site_name);
     ~SiteManager() = default;
 };

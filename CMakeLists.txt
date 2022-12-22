@@ -163,6 +163,24 @@ include_directories(${READLINE_INCLUDE_PATH})
 set(JSON_BuildTests OFF CACHE INTERNAL "")
 add_subdirectory(nlohmann_json)
 
+# ------------------------------ curl ---------------------------------------------
+
+find_package(CURL REQUIRED)
+
+# ------------------------------ MySQL -------------------------------------------
+
+find_path(MySQL_INCLUDE_PATH NAMES mysql/mysql.h)
+find_library(MySQL_LIB NAMES mysqlclient)
+
+include_directories(${MySQL_INCLUDE_PATH})
+
+# ------------------------------ jsoncpp -----------------------------------------
+
+find_path(JSONCPP_INCLUDE_PATH NAMES json/json.h)
+find_library(JSONCPP_LIB NAMES jsoncpp)
+
+include_directories(${JSONCPP_INCLUDE_PATH})
+
 # ------------------------------ Copy Resources -----------------------------------
 
 file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/res DESTINATION ${CMAKE_BINARY_DIR})
@@ -174,16 +192,36 @@ file(GLOB client_sources
 )
 
 file(GLOB db_sources 
-    src/db_server/*.cpp src/db_server/*.hpp 
+    src/db_server/*.cpp src/db_server/*.h 
+    src/db_server/optimizer/*.h src/db_server/optimizer/*.cpp
+    src/db_server/mysql_connector/*.h src/db_server/mysql_connector/*.cpp
+    src/db_server/metadata/*.h src/db_server/metadata/*.cpp
 )
 
 file(GLOB kv_sources 
     src/kv_server/*.cpp src/kv_server/*.hpp 
 )
+file(GLOB optimizer_sources 
+    src/optimizer/*.cpp src/optimizer/*.h 
+)
+
 
 add_executable(client ${client_sources} ${PROTO_SRC} ${PROTO_HEADER})
 target_link_libraries(client ${BRPC_LIB} ${DYNAMIC_LIB} ${READLINE_LIB})
 
-add_executable(db ${db_sources} ${PROTO_SRC} ${PROTO_HEADER})
-target_include_directories(db PUBLIC sql-parser/src)
-target_link_libraries(db ${BRPC_LIB} ${DYNAMIC_LIB} SQLParser nlohmann_json::nlohmann_json)
+add_executable(db ${db_sources} ${PROTO_SRC} ${PROTO_HEADER} ${optimizer_sources})
+target_include_directories(db PUBLIC  
+    src/db_server
+    sql-parser/src
+    ${MySQL_INCLUDE_PATH}
+    ${JSONCPP_INCLUDE_PATH}
+)
+target_link_libraries(db 
+    ${BRPC_LIB} 
+    ${DYNAMIC_LIB}
+    ${MySQL_LIB}
+    ${JSONCPP_LIB}
+    SQLParser 
+    nlohmann_json::nlohmann_json
+    CURL::libcurl
+)
