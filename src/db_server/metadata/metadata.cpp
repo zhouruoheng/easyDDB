@@ -1,17 +1,17 @@
 #include "metadata.h"
 
 /*
-存储所有表格的名称 </table, "publisher,customer,book,order">
-存储表格的列名 </table/publisher/attr, "id,name,nation">
-存储每列的属性 </table/publisher/attr/id, int>
-			   </table/publisher/attr/name, string>
-存储主键 </table/publisher/key, "id">
-存储分片类型 </table/publisher/schema, "hf">
-存储分片的数量 </table/publisher/fragment_num, 4>
-存储分片上的列（垂直分片） <table/customer/fragment/1/columns, "id,name">
-存储水平分片的条件 </table/publisher/fragment/1/conditions, "id<104000,nation=PRC">
-存储分片上的数据量 </table/publisher/fragment/1/size, 100>
-存储分片所在的位置 </table/publisher/fragment/1/pos, 1> 1号分片在1号站点
+存储所有表格的名称 </table, "Publisher,Customer,Book,Order">
+存储表格的列名 </table/Publisher/attr, "Publisher.id,Publisher.name,Publisher.nation">
+存储每列的属性 </table/Publisher/attr/Publisher.id, int>
+			   </table/Publisher/attr/Publisher.name, string>
+存储主键 </table/Publisher/key, "Publisher.id">
+存储分片类型 </table/Publisher/schema, "hf">
+存储分片的数量 </table/Publisher/fragment_num, 4>
+存储分片上的列（垂直分片） <table/Customer/fragment/1/columns, "Customer.id,Customer.name">
+存储水平分片的条件 </table/Publisher/fragment/1/conditions, "Publisher.id<104000,Publisher.nation=PRC">
+存储分片上的数据量 </table/Publisher/fragment/1/size, 100>
+存储分片所在的位置 </table/Publisher/fragment/1/pos, 1> 1号分片在1号站点
 */
 
 string EncodeBase64(const string inputStr)
@@ -184,22 +184,22 @@ string etcd_opt(string data,string op)
 
 void putTables()
 {
-	etcd_opt(string2json("/table","publisher,customer,book,order"), "PUT");
-	etcd_opt(string2json("/table/publisher/attr","id,name,nation"), "PUT");
-	etcd_opt(string2json("/table/publisher/attr/id","int"), "PUT");
-	etcd_opt(string2json("/table/publisher/attr/name","string"), "PUT");
-	etcd_opt(string2json("/table/publisher/attr/nation","string"), "PUT");
-	etcd_opt(string2json("/table/publisher/key","id"), "PUT");
-	etcd_opt(string2json("/table/publisher/schema","hf"), "PUT");
-	etcd_opt(string2json("/table/publisher/fragment_num","4"), "PUT");
-	etcd_opt(string2json("/table/publisher/fragment/1/pos","1"), "PUT");
-	etcd_opt(string2json("/table/publisher/fragment/2/pos","2"), "PUT");
-	etcd_opt(string2json("/table/publisher/fragment/3/pos","3"), "PUT");
-	etcd_opt(string2json("/table/publisher/fragment/4/pos","4"), "PUT");
-	etcd_opt(string2json("/table/publisher/fragment/1/conditions","id<104000,nation=PRC"), "PUT");
-	etcd_opt(string2json("/table/publisher/fragment/2/conditions","id<104000,nation=USA"), "PUT");
-	etcd_opt(string2json("/table/publisher/fragment/3/conditions","id>=104000,nation=PRC"), "PUT");
-	etcd_opt(string2json("/table/publisher/fragment/4/conditions","id>=104000,nation=USA"), "PUT");
+	etcd_opt(string2json("/table","Publisher,customer,book,order"), "PUT");
+	etcd_opt(string2json("/table/Publisher/attr","Publisher.id,Publisher.name,Publisher.nation"), "PUT");
+	etcd_opt(string2json("/table/Publisher/attr/Publisher.id","int"), "PUT");
+	etcd_opt(string2json("/table/Publisher/attr/Publisher.name","string"), "PUT");
+	etcd_opt(string2json("/table/Publisher/attr/Publisher.nation","string"), "PUT");
+	etcd_opt(string2json("/table/Publisher/key","Publisher.id"), "PUT");
+	etcd_opt(string2json("/table/Publisher/schema","hf"), "PUT");
+	etcd_opt(string2json("/table/Publisher/fragment_num","4"), "PUT");
+	etcd_opt(string2json("/table/Publisher/fragment/1/pos","1"), "PUT");
+	etcd_opt(string2json("/table/Publisher/fragment/2/pos","2"), "PUT");
+	etcd_opt(string2json("/table/Publisher/fragment/3/pos","3"), "PUT");
+	etcd_opt(string2json("/table/Publisher/fragment/4/pos","4"), "PUT");
+	etcd_opt(string2json("/table/Publisher/fragment/1/conditions","Publisher.id<104000,Publisher.nation=PRC"), "PUT");
+	etcd_opt(string2json("/table/Publisher/fragment/2/conditions","Publisher.id<104000,Publisher.nation=USA"), "PUT");
+	etcd_opt(string2json("/table/Publisher/fragment/3/conditions","Publisher.id>=104000,Publisher.nation=PRC"), "PUT");
+	etcd_opt(string2json("/table/Publisher/fragment/4/conditions","Publisher.id>=104000,Publisher.nation=USA"), "PUT");
 }
 
 vector<metadataTable> getTables()
