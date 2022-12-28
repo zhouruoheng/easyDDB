@@ -1,12 +1,15 @@
 #include <gflags/gflags.h>
 #include <butil/logging.h>
 #include <iostream>
+#include <ctime>
+#include <unistd.h>
 #include <brpc/server.h>
 #include <unistd.h> //这个是新加的
 #include "db.pb.h"
 #include "cluster_manager.h"
 #include "mysql_connector/mysql_connector.h"
 #include "optimizer/preprocess.h"
+#include "metadata/metadata.h"
 
 // For ClusterService
 DEFINE_bool(echo_attachment, true, "Echo attachment as well");
@@ -33,23 +36,7 @@ DEFINE_int32(max_retry, 3, "Max retries(not including the first RPC)");
 // additional information in /status.
 namespace db
 {
-
-    std::vector<string> string2list(string inputStr)
-    {
-        stringstream Str(inputStr);
-        vector<string> temp;
-        string cur;
-        while (getline(Str, cur, ','))
-            temp.push_back(cur);
-        return temp;
-    } // 工具：将字符串转化为vector
-
-    // string data_fetch(string msg, const SiteManager &manager)
-    // {
-    //     string result = db::mysql::select_sql(manager.local_site_name, msg);
-    //     return result;
-    // }
-
+   
     class AugPlanNode
     {
     public:
@@ -344,7 +331,7 @@ namespace db
             for (int i = 0; i < node_to_execute.size(); i++)
             {
                 // build a node
-                AugPlanNode = transfer_to_AugNode(query_tree, node_to_execute[i], plan);
+                AugPlanNode = transfer_to_AugNode(query_tree, node_to_execute[i],plan);
                 plan.augplannodes.push_back(AugPlanNode);
                 already_built.push_back(node_to_execute[i]);
             }
@@ -450,40 +437,35 @@ namespace db
             string select_what;
             string where_what;
             string from_what;
-            for (int j = 0; j < query_tree.tr[i].children.size(); j++)
-            {
-                from_what += query_tree.tr[i].children[j];
-                if (j != query_tree.tr[i].children.size() - 1)
-                {
-                    from_what += ",";
+            for(int j=0;j<query_tree.tr[i].children.size();j++){
+                from_what+=query_tree.tr[i].children[j];
+                if(j!=query_tree.tr[i].children.size()-1){
+                    from_what+=",";
                 }
             }
-            string ltab = query_tree.tr[i].join.ltab;
-            string lcol = query_tree.tr[i].join.lcol;
-            string rtab = query_tree.tr[i].join.rtab;
-            string rcol = query_tree.tr[i].join.rcol;
-            where_what = query_tree.tr[i].children[0] + "." + lcol + "=" + query_tree.tr[i].children[1] + "." + rcol;
-            for (int j = 0; j < query_tree.tr[i].projection.size(); j++)
-            {
-                if (std::find(query_tree.tr[i].children[0].attr.begin(), query_tree.tr[i].children[0].attr.end(), query_tree.tr[i].projection[j]) != query_tree.tr[i].children[0].attr.end())
-                {
-                    select_what += query_tree.tr[i].children[0] + "." + query_tree.tr[i].projection[j];
+            string ltab=query_tree.tr[i].join.ltab;
+            string lcol=query_tree.tr[i].join.lcol;
+            string rtab=query_tree.tr[i].join.rtab;
+            string rcol=query_tree.tr[i].join.rcol;
+            where_what=query_tree.tr[i].children[0]+"."+lcol+"="+query_tree.tr[i].children[1]+"."+rcol;
+            for(int j=0;j<query_tree.tr[i].projection.size();j++){
+                if(std::find(query_tree.tr[i].children[0].attr.begin(),query_tree.tr[i].children[0].attr.end(),query_tree.tr[i].projection[j])!=query_tree.tr[i].children[0].attr.end()){
+                    select_what+=query_tree.tr[i].children[0]+"."+query_tree.tr[i].projection[j];
+
                 }
-                else if (std::find(query_tree.tr[i].children[0].projection.begin(), query_tree.tr[i].children[0].projection.end(), query_tree.tr[i].projection[j]) != query_tree.tr[i].children[0].projection.end())
-                {
-                    select_what += query_tree.tr[i].children[0] + "." + query_tree.tr[i].projection[j];
+                else if(std::find(query_tree.tr[i].children[0].projection.begin(),query_tree.tr[i].children[0].projection.end(),query_tree.tr[i].projection[j])!=query_tree.tr[i].children[0].projection.end()){
+                    select_what+=query_tree.tr[i].children[0]+"."+query_tree.tr[i].projection[j];
                 }
-                else
-                {
-                    select_what += query_tree.tr[i].children[1] + "." + query_tree.tr[i].projection[j];
+                else{
+                    select_what+=query_tree.tr[i].children[1]+"."+query_tree.tr[i].projection[j];
+
                 }
-                if (j != query_tree.tr[i].projection.size() - 1)
-                {
-                    select_what += ",";
+                if(j!=query_tree.tr[i].projection.size()-1){
+                    select_what+=",";
                 }
             }
-            node_sql = "select " + select_what + " from " + from_what + " where " + where_what;
-            node.sql = node_sql;
+            node_sql="select "+select_what+" from "+from_what+" where "+where_what;
+            node.sql=node_sql;
             vector<string> all_attr;
             save_sql = "(";
             if (query_tree.tr[i].projection.size() > 0)
@@ -508,17 +490,19 @@ namespace db
             string node_sql;
             for (int j = 0; j < query_tree.tr[i].children.size(); j++)
             {
-                node_sql += "select * from " + query_tree.tr[i].children[j];
-                if (j != query_tree.tr[i].children.size() - 1)
-                {
-                    node_sql += " union all ";
+                node_sql+="select * from "+query_tree.tr[i].children[j];
+                if(j!=query_tree.tr[i].children.size()-1){
+                    node_sql+=" union all ";
                 }
             }
-            node.sql = node_sql;
-            node.save_sql = plan.augplannodes[query_tree.tr[i].children[0]].save_sql;
+            node.sql=node_sql;
+            node.save_sql=plan.augplannodes[query_tree.tr[i].children[0]].save_sql;
         }
         return node;
     }
+
+    // 这里是用于进行建立增强执行计划的函数，要注意的是，这里是需要重写的，这个函数运行在cluster端的
+
     class ClusterServiceImpl : public ClusterService
     {
     public:
@@ -593,53 +577,4 @@ namespace db
         }
         return ss.str();
     } // 发送数据到site
-
 } // namespace db
-
-int main(int argc, char *argv[])
-{
-    // Parse gflags. We recommend you to use gflags as well.
-    GFLAGS_NS::ParseCommandLineFlags(&argc, &argv, true);
-
-    // Generally you only need one Server.
-    brpc::Server server;
-
-    // Instance of your service.
-    db::ClusterServiceImpl cluster_service_impl;
-
-    // Add the service into server. Notice the second parameter, because the
-    // service is put on stack, we don't want server to delete it, otherwise
-    // use brpc::SERVER_OWNS_SERVICE.
-    if (server.AddService(&cluster_service_impl,
-                          brpc::SERVER_DOESNT_OWN_SERVICE) != 0)
-    {
-        LOG(ERROR) << "Fail to add service";
-        return -1;
-    }
-
-    butil::EndPoint point;
-    if (!FLAGS_listen_addr.empty())
-    {
-        if (butil::str2endpoint(FLAGS_listen_addr.c_str(), &point) < 0)
-        {
-            LOG(ERROR) << "Invalid listen address:" << FLAGS_listen_addr;
-            return -1;
-        }
-    }
-    else
-    {
-        point = butil::EndPoint(butil::IP_ANY, FLAGS_port);
-    }
-    // Start the server.
-    brpc::ServerOptions options;
-    options.idle_timeout_sec = FLAGS_idle_timeout_s;
-    if (server.Start(point, &options) != 0)
-    {
-        LOG(ERROR) << "Fail to start EchoServer";
-        return -1;
-    }
-
-    // Wait until Ctrl-C is pressed, then Stop() and Join() the server.
-    server.RunUntilAskedToQuit();
-    return 0;
-}
