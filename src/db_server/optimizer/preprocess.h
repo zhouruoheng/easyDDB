@@ -156,11 +156,11 @@ class Query
 
 };
 
-bool get_Expression(hsql::Expr *expr, vector<string> &All_Attr, vector<Condition> &Predicate, vector<joinCell> &Join)
+bool get_Expression(hsql::Expr *expr, vector<string> &All_Attr, vector<Condition> &Predicate, vector<joinCell> &Join, vector<string> fromTable)
 {
 	if (expr->type == hsql::kExprOperator)
 	{
-		bool mark = get_Expression(expr->expr, All_Attr, Predicate, Join) & get_Expression(expr->expr2, All_Attr, Predicate, Join);
+		bool mark = get_Expression(expr->expr, All_Attr, Predicate, Join, fromTable) & get_Expression(expr->expr2, All_Attr, Predicate, Join, fromTable);
 		if (mark && expr->opType != hsql::kOpAnd)
 		{
 			if (expr->expr2->type == hsql::kExprColumnRef)
@@ -176,9 +176,14 @@ bool get_Expression(hsql::Expr *expr, vector<string> &All_Attr, vector<Condition
 			else
 			{
 				cout<<"predicate"<<endl;
-				Condition cond = Condition(expr->opType, string(expr->expr->table), string(expr->expr->name));
-				All_Attr.push_back(string(expr->expr->table) + '.' + string(expr->expr->name));
-				cout<<string(expr->expr->table) + '.' + string(expr->expr->name)<<endl;
+				string tableName;
+				if (expr->expr->table==nullptr)
+					tableName = fromTable[0];
+				else 
+					tableName = string(expr->expr->table);
+				Condition cond = Condition(expr->opType, tableName, string(expr->expr->name));
+				All_Attr.push_back(tableName + '.' + string(expr->expr->name));
+				cout<<tableName + '.' + string(expr->expr->name)<<endl;
 				if (expr->expr2->type == hsql::kExprLiteralString)
 					// printf("string\n");
 					cond.type = "string", cond.sval = expr->expr2->name;
@@ -219,7 +224,11 @@ void init_SQL(const hsql::SelectStatement *Statement, vector<string> &fromTable,
 					Select_Attr.push_back("*");
 					break;
 				case hsql::kExprColumnRef:
-					string table = expr->table;
+					string table;
+					if (expr->table==nullptr)
+						table = fromTable[0];
+					else
+						table = expr->table;
 					string column = expr->name;
 					Select_Attr.push_back(table + "." + column);
 					break;
@@ -228,7 +237,7 @@ void init_SQL(const hsql::SelectStatement *Statement, vector<string> &fromTable,
 	printf("select & from finished!\n");
 	All_Attr = Select_Attr;
 	if (Statement->whereClause != nullptr)
-		get_Expression(Statement->whereClause, All_Attr, Predicate, Join);
+		get_Expression(Statement->whereClause, All_Attr, Predicate, Join, fromTable);
 	sort(All_Attr.begin(), All_Attr.end());
 	All_Attr.erase(unique(All_Attr.begin(), All_Attr.end()), All_Attr.end());
 	print(All_Attr);
@@ -283,65 +292,65 @@ vector<Condition> check_condition(vector<Condition> hf_condition, vector<Conditi
 vector<metadataTable> getMetadata()
 {
 	vector<metadataTable> Tables;
-	metadataTable Publisher = metadataTable("publisher", "hf", "id");
-	Publisher.attrs.push_back("publisher.id");
-	Publisher.attrs.push_back("publisher.name");
-	Publisher.attrs.push_back("publisher.nation");
-	Fragment frag1 = Fragment(make_pair("publisher", 1), 1,"hf", 46621);
-	frag1.hf_condition.push_back(Condition("publisher.id<104000"));
-	frag1.hf_condition.push_back(Condition("publisher.nation=PRC"));
-	Fragment frag2 = Fragment(make_pair("publisher", 2), 2,"hf", 222);
-	frag2.hf_condition.push_back(Condition("publisher.id<104000"));
-	frag2.hf_condition.push_back(Condition("publisher.nation=USA"));
-	Fragment frag3 = Fragment(make_pair("publisher", 3), 3,"hf", 12190);
-	frag3.hf_condition.push_back(Condition("publisher.id>=104000"));
-	frag3.hf_condition.push_back(Condition("publisher.nation=PRC"));
-	Fragment frag4 = Fragment(make_pair("publisher", 4), 4,"hf", 444);
-	frag4.hf_condition.push_back(Condition("publisher.id>=104000"));
-	frag4.hf_condition.push_back(Condition("publisher.nation=USA"));
+	metadataTable Publisher = metadataTable("Publisher", "hf", "id");
+	Publisher.attrs.push_back("Publisher.id");
+	Publisher.attrs.push_back("Publisher.name");
+	Publisher.attrs.push_back("Publisher.nation");
+	Fragment frag1 = Fragment(make_pair("Publisher", 1), 1,"hf", 46621);
+	frag1.hf_condition.push_back(Condition("Publisher.id<104000"));
+	frag1.hf_condition.push_back(Condition("Publisher.nation=PRC"));
+	Fragment frag2 = Fragment(make_pair("Publisher", 2), 2,"hf", 222);
+	frag2.hf_condition.push_back(Condition("Publisher.id<104000"));
+	frag2.hf_condition.push_back(Condition("Publisher.nation=USA"));
+	Fragment frag3 = Fragment(make_pair("Publisher", 3), 3,"hf", 12190);
+	frag3.hf_condition.push_back(Condition("Publisher.id>=104000"));
+	frag3.hf_condition.push_back(Condition("Publisher.nation=PRC"));
+	Fragment frag4 = Fragment(make_pair("Publisher", 4), 4,"hf", 444);
+	frag4.hf_condition.push_back(Condition("Publisher.id>=104000"));
+	frag4.hf_condition.push_back(Condition("Publisher.nation=USA"));
 	Publisher.frags.push_back(frag1);
 	Publisher.frags.push_back(frag2);
 	Publisher.frags.push_back(frag3);
 	Publisher.frags.push_back(frag4);
 	Tables.push_back(Publisher);
-	metadataTable Customer = metadataTable("customer", "vf", "id");
-	Customer.attrs.push_back("customer.id");
-	Customer.attrs.push_back("customer.name");
-	Customer.attrs.push_back("customer.rank");
-	frag1 = Fragment(make_pair("customer", 1), 1,"vf", 105000);
-	frag1.vf_column.push_back("customer.id");
-	frag1.vf_column.push_back("customer.name");
-	frag2 = Fragment(make_pair("customer", 2), 2,"vf", 105000);
-	frag2.vf_column.push_back("customer.id");
-	frag2.vf_column.push_back("customer.rank");
+	metadataTable Customer = metadataTable("Customer", "vf", "id");
+	Customer.attrs.push_back("Customer.id");
+	Customer.attrs.push_back("Customer.name");
+	Customer.attrs.push_back("Customer.rank");
+	frag1 = Fragment(make_pair("Customer", 1), 1,"vf", 105000);
+	frag1.vf_column.push_back("Customer.id");
+	frag1.vf_column.push_back("Customer.name");
+	frag2 = Fragment(make_pair("Customer", 2), 2,"vf", 105000);
+	frag2.vf_column.push_back("Customer.id");
+	frag2.vf_column.push_back("Customer.rank");
 	Customer.frags.push_back(frag1);
 	Customer.frags.push_back(frag2);
 	Tables.push_back(Customer);
-	metadataTable Book = metadataTable("book", "hf", "id");
-	Book.attrs = {"book.id", "book.title", "book.authors", "book.publisher_id", "book.copies"};
-	frag1 = Fragment(make_pair("book", 1), 1, "hf", 118776);
-	frag1.hf_condition.push_back(Condition("book.id<205000"));
-	frag2 = Fragment(make_pair("book", 2), 2, "hf", 118800);
-	frag2.hf_condition.push_back(Condition("book.id>=205000"));
-	frag2.hf_condition.push_back(Condition("book.id<210000"));
-	frag3 = Fragment(make_pair("book", 3), 3, "hf", 950423);
-	frag3.hf_condition.push_back(Condition("book.id>=210000"));
+	metadataTable Book = metadataTable("Book", "hf", "id");
+	Book.attrs = {"Book.id", "Book.title", "Book.authors", "Book.publisher_id", "Book.copies"};
+	frag1 = Fragment(make_pair("Book", 1), 1, "hf", 118776);
+	frag1.hf_condition.push_back(Condition("Book.id<205000"));
+	frag2 = Fragment(make_pair("Book", 2), 2, "hf", 118800);
+	frag2.hf_condition.push_back(Condition("Book.id>=205000"));
+	frag2.hf_condition.push_back(Condition("Book.id<210000"));
+	frag3 = Fragment(make_pair("Book", 3), 3, "hf", 950423);
+	frag3.hf_condition.push_back(Condition("Book.id>=210000"));
 	Book.frags = {frag1, frag2, frag3};
 	Tables.push_back(Book);
-	metadataTable Orders = metadataTable("orders", "hf", "");
-	Orders.attrs = {"orders.customer_id", "orders.book_id", "orders.quantity"};
-	frag1 = Fragment(make_pair("orders", 1), 1, "hf", 1000);
-	frag1.hf_condition.push_back(Condition("orders.customer_id<307000"));
-	frag1.hf_condition.push_back(Condition("orders.book_id<215000"));
-	frag2 = Fragment(make_pair("orders", 2), 2, "hf", 1000);
-	frag2.hf_condition.push_back(Condition("orders.customer_id<307000"));
-	frag2.hf_condition.push_back(Condition("orders.book_id>=215000"));
-	frag3 = Fragment(make_pair("orders", 3), 3, "hf", 184796);
-	frag3.hf_condition.push_back(Condition("orders.customer_id>=307000"));
-	frag3.hf_condition.push_back(Condition("orders.book_id<215000"));
-	frag4 = Fragment(make_pair("orders", 4), 4, "hf", 435846);
-	frag4.hf_condition.push_back(Condition("orders.customer_id>=307000"));
-	frag4.hf_condition.push_back(Condition("orders.book_id>=215000"));
+	metadataTable Orders = metadataTable("Orders", "hf", "");
+	Orders.attrs = {"Orders.customer_id", "Orders.book_id", "Orders.quantity"};
+	frag1 = Fragment(make_pair("Orders", 1), 1, "hf", 1000);
+	frag1.hf_condition.push_back(Condition("Orders.customer_id<307000"));
+	frag1.hf_condition.push_back(Condition("Orders.book_id<215000"));
+	frag2 = Fragment(make_pair("Orders", 2), 2, "hf", 1000);
+	frag2.hf_condition.push_back(Condition("Orders.customer_id<307000"));
+	frag2.hf_condition.push_back(Condition("Orders.book_id>=215000"));
+	frag3 = Fragment(make_pair("Orders", 3), 3, "hf", 184796);
+	frag3.hf_condition.push_back(Condition("Orders.customer_id>=307000"));
+	frag3.hf_condition.push_back(Condition("Orders.book_id<215000"));
+	frag4 = Fragment(make_pair("Orders", 4), 4, "hf", 435846);
+	frag4.hf_condition.push_back(Condition("Orders.customer_id>=307000"));
+	frag4.hf_condition.push_back(Condition("Orders.book_id>=215000"));
 	Orders.frags = {frag1, frag2, frag3, frag4};
 	Tables.push_back(Orders);
 	return Tables;
@@ -394,7 +403,7 @@ struct siteNum
 	siteNum(int _site){
 		total = 0;
 		site = _site;
-		vector<string> tabs = {"publisher", "customer", "book", "orders"};
+		vector<string> tabs = {"Publisher", "Customer", "Book", "Orders"};
 		for (auto x : tabs) rSize[x] = 0;
 	}
 	void add_relation(string table, int _rSize)
@@ -535,16 +544,16 @@ Tree build_query_tree(vector<metadataTable> Tables, vector<string> fromTable, ve
 			if (find(All_Attr.begin(), All_Attr.end(), x) == All_Attr.end())
 				All_Attr.push_back(x);
 		}
-	}
+	}//把“*”替换成对应的属性名
 	print(Select_Attr);
 	print(All_Attr);
 	vector<Condition> addPred;
-	vector<string> Join_Attr;
+	vector<string> Join_Attr;//Join操作涉及的属性
 	for (auto x : Join)
 		Join_Attr.push_back(x.ltab+"."+x.lcol),
 		Join_Attr.push_back(x.rtab+"."+x.rcol);
-	map<pair<string,int>, int> mpTr;
-	map<pair<string,int>, int> cpTr;
+	map<pair<string,int>, int> mpTr; //fragment(如<Book,1>)在query_tree.tr中的下标
+	map<pair<string,int>, int> cpTr;//fragment(如<Book,1>)最初在query_tree.tr中节点是否已经有父节点了
 	for (auto p : Predicate)
 		for (auto x : Join){
 			string tab,attr,res;
@@ -557,12 +566,12 @@ Tree build_query_tree(vector<metadataTable> Tables, vector<string> fromTable, ve
 			if (p.type=="int") cur.ival = p.ival;
 			else cur.sval = p.sval;
 			addPred.push_back(cur);
-		}
+		} //谓词条件可能会通过join连接转移，如Book.id > 10 and Book.id = Orders.Book_id 可以推出 Orders.Book_id > 10
 	Predicate.insert(Predicate.end(), addPred.begin(), addPred.end());
-	map<string, vector<Fragment>> pruning;
-	map<string, int> relationSize;
-	vector<siteNum> siteNums;
-	vector<pair<string, int>> allFrag;
+	map<string, vector<Fragment>> pruning; //剪枝后每个Table保留下来的分片
+	map<string, int> relationSize; //每个Table剪枝后总size
+	vector<siteNum> siteNums; //剪枝后，每个site上分片的信息
+	vector<pair<string, int>> allFrag; //剪枝后剩余的所有分片
 	for (int i=1;i<=4;i++) siteNums.push_back(siteNum(i));
 	for (auto table : Tables)
 	{
@@ -587,7 +596,7 @@ Tree build_query_tree(vector<metadataTable> Tables, vector<string> fromTable, ve
 					else 
 						if (find(Join_Attr.begin(), Join_Attr.end(), attr) != Join_Attr.end())
 							node.projection.push_back(attr);
-				}
+				}//投影算子在选择算子之后操作，所以只在选择算子中的属性不需要继续保留
 				// print(table.attrs)
 				print(node.projection);
 				if (node.projection.size() == table.attrs.size())
@@ -606,7 +615,7 @@ Tree build_query_tree(vector<metadataTable> Tables, vector<string> fromTable, ve
 			relationSize[table.name] = table.frags[0].size;
 			printf("vf");
 			vector<Condition> res;
-			for (auto x : Predicate)
+			for (auto x : Predicate) //寻找跟该Table相关的谓词
 				if (x.table==table.name) res.push_back(x);
 			int cnt=0;
 			bool pruningFrag=false;
@@ -616,10 +625,10 @@ Tree build_query_tree(vector<metadataTable> Tables, vector<string> fromTable, ve
 				bool mark=false;
 				for (auto x : frag.vf_column){
 					for (auto p : res)
-						if (p.table+"."+p.attr==x) sel.push_back(p);
+						if (p.table+"."+p.attr==x) sel.push_back(p); //寻找与当前垂直分片相关的谓词
 					if (find(All_Attr.begin(), All_Attr.end(), x)!=All_Attr.end()) {
 						if (find(Select_Attr.begin(), Select_Attr.end(), x)!=Select_Attr.end() || find(Join_Attr.begin(), Join_Attr.end(), x)!=Join_Attr.end())
-							vf_attr.push_back(x);
+							vf_attr.push_back(x); //存放选择算子计算结束后有用的属性
 					}
 					else 
 						continue;
@@ -634,11 +643,11 @@ Tree build_query_tree(vector<metadataTable> Tables, vector<string> fromTable, ve
 					pruning[table.name].push_back(frag);
 				}
 			}
-			if (cnt > 1) {
+			if (cnt > 1) {//涉及多个垂直分片，将分片通过key进行Join连接
 				int sz = query_tree.tr.size();
 				int mx=0, mx_ans;
 				vector<string> vf_attr;
-				for (int i=1;i<=cnt;i++){
+				for (int i=1;i<=cnt;i++){//为了连接垂直分片，需要保留key
 					if (query_tree.tr[sz-i].projection.size() && find(query_tree.tr[sz-i].projection.begin(), query_tree.tr[sz-i].projection.end(), table.name+"."+table.key_column)==query_tree.tr[sz-i].projection.end()) {
 						query_tree.tr[sz-i].projection.push_back(table.name+"."+table.key_column);
 						if (query_tree.tr[sz-i].projection.size() == query_tree.tr[sz-i].attr.size())
@@ -671,7 +680,7 @@ Tree build_query_tree(vector<metadataTable> Tables, vector<string> fromTable, ve
 				allFrag.push_back(node.fname);
 				mpTr[node.fname] =  query_tree.tr.size()-1;
 			}
-			if (!cnt) {
+			if (!cnt) {//整个查询只涉及垂直分片的key，则选择该Table的第一个fragment
 				treeNode node = treeNode("Fragment", table.frags[0].fname, table.frags[0].size, 1, table.frags[0].vf_column, res);
 				node.projection.push_back(table.key_column);
 				query_tree.tr.push_back(node);
@@ -684,14 +693,14 @@ Tree build_query_tree(vector<metadataTable> Tables, vector<string> fromTable, ve
 	}
 	// join
 	// 建边
-	sort(siteNums.begin(), siteNums.end());
-	map<pair<string,int>, map<pair<string,int>, int>> edge;
-	map<pair<string,int>, map<pair<string,int>, int>> conflict;
+	sort(siteNums.begin(), siteNums.end()); 
+	map<pair<string,int>, map<pair<string,int>, int>> edge; //单向边
+	map<pair<string,int>, map<pair<string,int>, int>> conflict; //条件冲突的分片对
 	for (auto i : allFrag)
 		for (auto j : allFrag)
 			conflict[i][j] = 0;
-	sortJoin(Join);
-	vector<string> relation;
+	sortJoin(Join); //每个Join首尾相接（[i-1].rtab==[i].ltab）
+	vector<string> relation; //依次进行join的表
 	for (auto p : Join){
 		relation.push_back(p.ltab);
 		cout<<p.ltab<<"."<<p.lcol<<" "<<p.rtab<<" "<<p.rcol<<endl;
@@ -730,12 +739,14 @@ Tree build_query_tree(vector<metadataTable> Tables, vector<string> fromTable, ve
 				}
 			}
 	}
-	joinCell lastR = Join.back();
-	relation.push_back(lastR.rtab);
 	vector<vector<pair<string,int>>> JoinList;
-	for (auto x : pruning[Join[0].ltab]){
-		vector<pair<string,int>> ans = {x.fname};
-		get_joinList(x.fname, edge, JoinList, ans, Join.size()+1);
+	if (Join.size()){
+		joinCell lastR = Join.back();
+		relation.push_back(lastR.rtab);
+		for (auto x : pruning[Join[0].ltab]){
+			vector<pair<string,int>> ans = {x.fname};
+			get_joinList(x.fname, edge, JoinList, ans, Join.size()+1);
+		}//通过DFS得到所有的joinlist,如c1,o3,b1,p1
 	}
 	cout<<"JoinList:"<<endl;
 	for (auto x : JoinList){
@@ -744,9 +755,9 @@ Tree build_query_tree(vector<metadataTable> Tables, vector<string> fromTable, ve
 		cout<<endl;
 	}
 	auto iter = max_element(relationSize.begin(), relationSize.end(), cmp);
-	string Rp = iter->first;
+	string Rp = iter->first; //找到Rp (剩余分片总和最大的Table)
 	cout<<"Rp:"<<Rp<<endl;
-	vector<int> processSite;
+	vector<int> processSite; //执行站点
 	for (auto x : siteNums){
 		int sum = 0;
 		for (auto tab : Tables) {
@@ -768,7 +779,7 @@ Tree build_query_tree(vector<metadataTable> Tables, vector<string> fromTable, ve
 			swap(processSite[0], processSite[i]);
 	print(processSite);
 	map<int,vector<vector<pair<string,int>>>> JoinSite;
-	for (auto x : JoinList){
+	for (auto x : JoinList){ //确定每个join组合的执行站点
 		int cnt = 0;
 		int mx = 0;
 		int mxSite = 0;
@@ -788,8 +799,8 @@ Tree build_query_tree(vector<metadataTable> Tables, vector<string> fromTable, ve
 		if (JoinSite[i].size()==0)
 			continue;
 		cout<<"!!!!"<<endl;
-		vector<vector<vector<int>>> res=get_pattern(JoinSite[i], Join.size()+1);
-		for (auto plist : res){
+		vector<vector<vector<int>>> res=get_pattern(JoinSite[i], Join.size()+1); //同一站点的joinlist进行模式合并
+		for (auto plist : res){ //先Union 再Join
 			vector<int> tr;
 			for (int j=0;j<=Join.size();j++){
 				cout<<plist[j].size()<<endl;
@@ -816,7 +827,7 @@ Tree build_query_tree(vector<metadataTable> Tables, vector<string> fromTable, ve
 			node.attr = get_attr(query_tree.tr[tr[0]], query_tree.tr[tr[1]]);
 			node.projection = get_projection(Select_Attr, node.attr, Join[0].ltab+"."+Join[0].lcol);
 			if (tr.size()==2 || Join[0].rtab+"."+Join[0].rcol != Join[1].ltab+"."+Join[1].lcol)
-				node.projection = get_projection(Select_Attr, node.projection, Join[0].rtab+"."+Join[0].rcol);
+				node.projection = get_projection(Select_Attr, node.projection, Join[0].rtab+"."+Join[0].rcol); //扔掉已经完成join任务的属性
 			query_tree.tr.push_back(node);
 			int par = query_tree.tr.size()-1;
 			query_tree.tr[tr[0]].parent = par;
@@ -842,7 +853,7 @@ Tree build_query_tree(vector<metadataTable> Tables, vector<string> fromTable, ve
 	int cnt=0;
 	for (int i = 0; i < num; i++)
 		if (query_tree.tr[i].parent==-1) cnt++;
-	if (cnt>1){
+	if (cnt>1){//如果有多个节点没有父节点，则将这些节点合并
 		treeNode root = treeNode("Union", processSite[0]);
 		for (int i = 0; i < num; i++)
 			if (query_tree.tr[i].parent==-1)
