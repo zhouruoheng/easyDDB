@@ -1,0 +1,58 @@
+{
+    "fragmentInfo": {
+        "A": [
+            {
+                "site": "site-1",
+                "conditions": [
+                    {
+                        "column": "x",
+                        "op": "<=",
+                        "value": 10
+                    }
+                ]
+            },
+            {
+                "site": "site-2",
+                "conditions": [
+                    {
+                        "column": "x",
+                        "op": ">",
+                        "value": 10
+                    }
+                ]
+            }
+        ],
+        "B": [
+            {
+                "site": "site-1",
+                "conditions": [
+                    {
+                        "column": "y",
+                        "op": "=",
+                        "value": "Y"
+                    }
+                ]
+            },
+            {
+                "site": "site-2",
+                "conditions": [
+                    {
+                        "column": "y",
+                        "op": "!=",
+                        "value": "Y"
+                    }
+                ]
+            }
+        ]
+    },
+    "tableInfo": {
+        "A": [
+            {"columnName": "x", "columnType": "integer"},
+            {"columnName": "y", "columnType": "text"}
+        ],
+        "B": [
+            {"columnName": "x", "columnType": "integer"},
+            {"columnName": "y", "columnType": "text"}
+        ]
+    }
+}
