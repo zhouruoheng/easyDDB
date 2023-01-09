@@ -2,7 +2,7 @@
 
 namespace server
 {
-    
+
     ServiceImpl::ServiceImpl()
         : localSiteName(FLAGS_site_name), sitesManager(), dbManager(FLAGS_site_name), requestID(0)
     {
@@ -77,188 +77,118 @@ namespace server
                   << " (attached=" << cntl->request_attachment() << ")";
 
         uint64_t log_id = cntl->log_id();
-        if (request->msg_type() == "main")
+        json data = json::parse(request->msg());
+        json resp_data = json::object({{"info", "(success)"},
+                                       {"content", json::object()}});
+
+        auto replaceFn = [](std::string &str)
         {
-            json data = json::parse(request->msg());
-            json resp_data = json::object({{"info", "(success)"},
-                                           {"content", json::object()}});
-
-            auto replaceFn = [](std::string &str)
+            for (auto &c : str)
             {
-                for (auto &c : str)
-                {
-                    if (c == '-')
-                        c = '_';
-                }
-            };
-
-            std::string dataType = data["type"].get<std::string>();
-            if (dataType == "updateConfig")
-            {
-                json config = data["content"];
-                cfg.updateConfig(config);
+                if (c == '-')
+                    c = '_';
             }
-            else if (dataType == "filter")
+        };
+
+        std::string dataType = data["type"].get<std::string>();
+        if (dataType == "updateConfig")
+        {
+            json config = data["content"];
+            cfg.updateConfig(config);
+        }
+        else if (dataType == "filter")
+        {
+            std::string newTable = "tmp_" + data["site"].get<std::string>() + "_" + std::to_string(log_id);
+            replaceFn(newTable);
+
+            Table table = data["content"]["table"].get<Table>();
+
+            std::string selectList = "";
+            if (data["content"]["fields"].is_string())
+                selectList = data["content"]["fields"].get<std::string>();
+            else
             {
-                std::string newTable = "tmp_" + data["site"].get<std::string>() + "_" + std::to_string(log_id);
-                replaceFn(newTable);
-
-                Table table = data["content"]["table"].get<Table>();
-
-                std::string selectList = "";
-                if (data["content"]["fields"].is_string())
-                    selectList = data["content"]["fields"].get<std::string>();
-                else
+                for (auto &field : data["content"]["fields"])
                 {
-                    for (auto &field : data["content"]["fields"])
-                    {
-                        if (selectList.size() > 0)
-                            selectList += ", ";
-                        selectList += field.get<std::string>();
-                    }
+                    if (selectList.size() > 0)
+                        selectList += ", ";
+                    selectList += field.get<std::string>();
                 }
+            }
 
-                std::string whereClause = "";
-                json fieldConditions = data["content"]["fieldConditions"];
-                for (auto &fieldCond : fieldConditions)
-                {
-                    if (whereClause.size() > 0)
-                        whereClause += " AND ";
-                    whereClause +=
-                        table + "." + fieldCond["field"].get<std::string>() + " " + Op2String((hsql::OperatorType)fieldCond["op"].get<int>()) + " " + Value2String(fieldCond["value"]);
-                }
+            std::string whereClause = "";
+            json fieldConditions = data["content"]["fieldConditions"];
+            for (auto &fieldCond : fieldConditions)
+            {
                 if (whereClause.size() > 0)
-                    whereClause = "where " + whereClause;
-                std::string drop_sql = "drop table if exists " + newTable + ";";
-                std::string selectStat = "select " + selectList + " from " + table + " " + whereClause;
-                std::string sql = "create table " + newTable + " as " + selectStat + ";";
+                    whereClause += " AND ";
+                whereClause +=
+                    table + "." + fieldCond["field"].get<std::string>() + " " + Op2String((hsql::OperatorType)fieldCond["op"].get<int>()) + " " + Value2String(fieldCond["value"]);
+            }
+            if (whereClause.size() > 0)
+                whereClause = "where " + whereClause;
+            std::string drop_sql = "drop table if exists " + newTable + ";";
+            std::string selectStat = "select " + selectList + " from " + table + " " + whereClause;
+            std::string sql = "create table " + newTable + " as " + selectStat + ";";
+            dbManager.execNotSelectSql(drop_sql);
+            dbManager.execNotSelectSql(sql);
+            resp_data["content"] = json::object({{"table", newTable},
+                                                 {"site", localSiteName}});
+        }
+        else if (dataType == "join")
+        {
+            json usResult{
+                {"columns", nullptr},
+                {"columnTypes", nullptr},
+                {"data", json::array()}};
+            for (auto &rItem : data["content"]["remote"])
+            {
+                std::string remoteSite = rItem["site"].get<std::string>();
+                json _request{
+                    {"type", "select"},
+                    {"site", localSiteName},
+                    {"content",
+                     {{"fields", "*"},
+                      {"table", rItem["table"].get<std::string>()}}}};
+                json _resp = sendMsg(remoteSite, _request.dump());
+                std::string _info = _resp["info"].get<std::string>();
+                if (_info != "(success)")
+                {
+                    resp_data = json::object({{"info", _info},
+                                              {"content", nullptr}});
+                    goto END;
+                }
+                json sResult = _resp["content"];
+                if (usResult["columns"].is_null())
+                    usResult["columns"] = sResult["columns"];
+                if (usResult["columnTypes"].is_null())
+                    usResult["columnTypes"] = sResult["columnTypes"];
+                for (auto &rowData : sResult["data"])
+                    usResult["data"].push_back(rowData);
+            }
+
+            std::string newTable = "tmp_" + data["site"].get<std::string>() + "_" + std::to_string(log_id);
+            replaceFn(newTable);
+            std::string joinTable = "join_" + data["site"].get<std::string>() + "_" + std::to_string(log_id);
+            replaceFn(joinTable);
+
+            { // do create Table
+                std::string typeClause = "";
+                for (auto &col : usResult["columnTypes"].items())
+                {
+                    if (typeClause.size() > 0)
+                        typeClause += " , ";
+                    typeClause += col.key() + " " + col.value().get<std::string>();
+                }
+                std::string drop_sql = "drop table if exists " + joinTable + ";";
+                std::string sql = "create table " + joinTable + "(" + typeClause + ");";
                 dbManager.execNotSelectSql(drop_sql);
                 dbManager.execNotSelectSql(sql);
-                resp_data["content"] = json::object({{"table", newTable},
-                                                     {"site", localSiteName}});
             }
-            else if (dataType == "join")
-            {
-                json usResult{
-                    {"columns", nullptr},
-                    {"columnTypes", nullptr},
-                    {"data", json::array()}};
-                for (auto &rItem : data["content"]["remote"])
-                {
-                    std::string remoteSite = rItem["site"].get<std::string>();
-                    json _request{
-                        {"type", "select"},
-                        {"site", localSiteName},
-                        {"content",
-                         {{"fields", "*"},
-                          {"table", rItem["table"].get<std::string>()}}}};
-                    json _resp = sendMsg(remoteSite, _request.dump());
-                    std::string _info = _resp["info"].get<std::string>();
-                    if (_info != "(success)")
-                    {
-                        resp_data = json::object({{"info", _info},
-                                                  {"content", nullptr}});
-                        goto END;
-                    }
-                    json sResult = _resp["content"];
-                    if (usResult["columns"].is_null())
-                        usResult["columns"] = sResult["columns"];
-                    if (usResult["columnTypes"].is_null())
-                        usResult["columnTypes"] = sResult["columnTypes"];
-                    for (auto &rowData : sResult["data"])
-                        usResult["data"].push_back(rowData);
-                }
 
-                std::string newTable = "tmp_" + data["site"].get<std::string>() + "_" + std::to_string(log_id);
-                replaceFn(newTable);
-                std::string joinTable = "join_" + data["site"].get<std::string>() + "_" + std::to_string(log_id);
-                replaceFn(joinTable);
-
-                { // do create Table
-                    std::string typeClause = "";
-                    for (auto &col : usResult["columnTypes"].items())
-                    {
-                        if (typeClause.size() > 0)
-                            typeClause += " , ";
-                        typeClause += col.key() + " " + col.value().get<std::string>();
-                    }
-                    std::string drop_sql = "drop table if exists " + joinTable + ";";
-                    std::string sql = "create table " + joinTable + "(" + typeClause + ");";
-                    dbManager.execNotSelectSql(drop_sql);
-                    dbManager.execNotSelectSql(sql);
-                }
-
-                { // insert data
-                    std::string valueClause = "";
-                    for (auto &row : usResult["data"])
-                    {
-                        std::string rowClause = "";
-                        for (auto &item : row)
-                        {
-                            if (rowClause.size() > 0)
-                                rowClause += ",";
-                            rowClause += Value2String(item);
-                        }
-                        if (valueClause.size() > 0)
-                            valueClause += ",";
-                        valueClause += "(" + rowClause + ")";
-                    }
-                    std::string sql = "insert into " + joinTable + " values " + valueClause + ";";
-                    dbManager.execNotSelectSql(sql);
-                }
-
-                { // join
-                    std::string leftTable = data["content"]["table"].get<std::string>();
-                    std::string &rightTable = joinTable;
-                    std::string whereClause = "";
-                    for (auto &jItem : data["content"]["joinOn"])
-                    {
-                        if (whereClause.size() > 0)
-                            whereClause += " , ";
-                        whereClause +=
-                            leftTable + "." + jItem["field0"].get<std::string>() + " = " + rightTable + "." + jItem["field1"].get<std::string>();
-                    }
-                    if (whereClause.size() > 0)
-                        whereClause = " where " + whereClause;
-                    std::string drop_sql = "drop table if exists " + newTable + ";";
-                    std::string selectStat = " select * from " + leftTable + "," + rightTable + whereClause;
-                    std::string sql = "create table " + newTable + " as " + selectStat + ";";
-                    dbManager.execNotSelectSql(drop_sql);
-                    dbManager.execNotSelectSql(sql);
-                }
-
-                { // delete tmp join table
-                    std::string sql = "drop table " + joinTable + ";";
-                    dbManager.execNotSelectSql(sql);
-                }
-                resp_data["content"] = json::object({{"table", newTable},
-                                                     {"site", localSiteName}});
-            }
-            else if (dataType == "select")
-            {
-                Table table = data["content"]["table"].get<Table>();
-
-                std::string selectList = "";
-                if (data["content"]["fields"].is_string())
-                    selectList = data["content"]["fields"].get<std::string>();
-                else
-                {
-                    for (auto &field : data["content"]["fields"])
-                    {
-                        if (selectList.size() > 0)
-                            selectList += ", ";
-                        selectList += field.get<std::string>();
-                    }
-                }
-                std::string sql = "select " + selectList + " from " + table + ";";
-                json sResult = dbManager.execSelectSql(sql, table);
-                resp_data["content"] = sResult;
-            }
-            else if (dataType == "insert")
-            {
-                Table table = data["content"]["table"].get<Table>();
+            { // insert data
                 std::string valueClause = "";
-                for (auto &row : data["content"]["data"])
+                for (auto &row : usResult["data"])
                 {
                     std::string rowClause = "";
                     for (auto &item : row)
@@ -271,36 +201,105 @@ namespace server
                         valueClause += ",";
                     valueClause += "(" + rowClause + ")";
                 }
-                std::string sql = "insert into " + table + " values " + valueClause + ";";
+                std::string sql = "insert into " + joinTable + " values " + valueClause + ";";
                 dbManager.execNotSelectSql(sql);
             }
-            else if (dataType == "create")
-            {
-                Table table = data["content"]["table"].get<Table>();
-                std::string typeClause = "";
-                for (auto &col : data["content"]["columns"])
+
+            { // join
+                std::string leftTable = data["content"]["table"].get<std::string>();
+                std::string &rightTable = joinTable;
+                std::string whereClause = "";
+                for (auto &jItem : data["content"]["joinOn"])
                 {
-                    if (typeClause.size() > 0)
-                        typeClause += " , ";
-                    typeClause += col["name"].get<std::string>() + " " + Datatype2String((hsql::DataType)col["type"].get<int>());
+                    if (whereClause.size() > 0)
+                        whereClause += " , ";
+                    whereClause +=
+                        leftTable + "." + jItem["field0"].get<std::string>() + " = " + rightTable + "." + jItem["field1"].get<std::string>();
                 }
-                std::string sql = "create table " + table + "(" + typeClause + ");";
+                if (whereClause.size() > 0)
+                    whereClause = " where " + whereClause;
+                std::string drop_sql = "drop table if exists " + newTable + ";";
+                std::string selectStat = " select * from " + leftTable + "," + rightTable + whereClause;
+                std::string sql = "create table " + newTable + " as " + selectStat + ";";
+                dbManager.execNotSelectSql(drop_sql);
                 dbManager.execNotSelectSql(sql);
             }
-            else if (dataType == "drop")
-            {
-                Table table = data["content"]["table"].get<Table>();
-                std::string sql = "drop table " + table + ";";
+
+            { // delete tmp join table
+                std::string sql = "drop table " + joinTable + ";";
                 dbManager.execNotSelectSql(sql);
             }
-        END:
-            response->set_msg(resp_data.dump());
+            resp_data["content"] = json::object({{"table", newTable},
+                                                 {"site", localSiteName}});
         }
-        else
+        else if (dataType == "select")
         {
-            string response_message = deal_with_msg(request->msg_type(), request->msg());
-            response->set_msg(response_message);
+            Table table = data["content"]["table"].get<Table>();
+
+            std::string selectList = "";
+            if (data["content"]["fields"].is_string())
+                selectList = data["content"]["fields"].get<std::string>();
+            else
+            {
+                for (auto &field : data["content"]["fields"])
+                {
+                    if (selectList.size() > 0)
+                        selectList += ", ";
+                    selectList += field.get<std::string>();
+                }
+            }
+            std::string sql = "select " + selectList + " from " + table + ";";
+            json sResult = dbManager.execSelectSql(sql, table);
+            resp_data["content"] = sResult;
         }
+        else if (dataType == "insert")
+        {
+            Table table = data["content"]["table"].get<Table>();
+            std::string valueClause = "";
+            for (auto &row : data["content"]["data"])
+            {
+                std::string rowClause = "";
+                for (auto &item : row)
+                {
+                    if (rowClause.size() > 0)
+                        rowClause += ",";
+                    rowClause += Value2String(item);
+                }
+                if (valueClause.size() > 0)
+                    valueClause += ",";
+                valueClause += "(" + rowClause + ")";
+            }
+            std::string sql = "insert into " + table + " values " + valueClause + ";";
+            dbManager.execNotSelectSql(sql);
+        }
+        else if (dataType == "create")
+        {
+            Table table = data["content"]["table"].get<Table>();
+            std::string typeClause = "";
+            for (auto &col : data["content"]["columns"])
+            {
+                if (typeClause.size() > 0)
+                    typeClause += " , ";
+                typeClause += col["name"].get<std::string>() + " " + Datatype2String((hsql::DataType)col["type"].get<int>());
+            }
+            std::string sql = "create table " + table + "(" + typeClause + ");";
+            dbManager.execNotSelectSql(sql);
+        }
+        else if (dataType == "drop")
+        {
+            Table table = data["content"]["table"].get<Table>();
+            std::string sql = "drop table " + table + ";";
+            dbManager.execNotSelectSql(sql);
+        }
+        else if (dataType == "start_execute")
+        {
+            int execute_node=data["content"]["execute_node"].get<int>();
+            AugmentedPlan plan=AugmentedPlan((data["content"]["plan"].get<json>()));
+            
+
+        }
+    END:
+        response->set_msg(resp_data.dump());
     }
     std::string ServiceImpl::deal_with_msg(const std::string msg_type, const std::string &msg)
     {
@@ -339,12 +338,28 @@ namespace server
             const hsql::SQLStatement *statement = result.getStatement(0);
 
             if (statement->isType(hsql::kStmtSelect))
-            {      
+            {
                 vector<metadataTable> Tables = db::opt::getMetadata();
-                db::opt::Tree optimized_tree = db::opt::SelectProcess(Tables, result);
-                
-
+                db::opt::Tree optimized_tree = db::opt::SelectProcess(Tables, &result);
+                AugmentedPlan plan = build_augmented_plan(optimized_tree);
+                int root_id = plan.find_root_id();
+                std::string root_site = plan.augplannodes[root_id].execute_site;
+                json data{
+                    {"type", "start_execute"},
+                    {"site", localSiteName},
+                    {"content",
+                     {{"execute_node", std::to_string(root_id)}
+                     ,{"plan",plan.to_json()
+                     }}}};
+                json response = sendMsg(root_site, data.dump());
+                return response.dump();//此处为brpc同步通信
             }
+            // 发送包的定义                    {"type", "site_execute"},
+            //          {"site", localSiteName},
+            //          {"content",
+            //           {{"execute_node", std::to_string(root_id)}}}};
+            // 数据包的定义
+            //  {"column",
             else if (statement->isType(hsql::kStmtInsert))
             {
                 const auto *insert = static_cast<const hsql::InsertStatement *>(statement);

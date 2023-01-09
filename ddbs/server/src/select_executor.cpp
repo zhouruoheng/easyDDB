@@ -6,7 +6,42 @@
 
 namespace server
 {
+    json AugmentedPlan::to_json(){
+        json j;
+        j["node_num"] = node_num;
+        for(int i = 0; i < node_num; i++){
+            j[std::to_string(i)]["parent_id"] = augplannodes[i].parent_id;
+            j[std::to_string(i)]["execute_site"] = augplannodes[i].execute_site;
+            j[std::to_string(i)]["node_id"] = augplannodes[i].node_id;
+            j[std::to_string(i)]["sql"] = augplannodes[i].sql;
+            j[std::to_string(i)]["save_sql"] = augplannodes[i].save_sql;
+        }
+        return j;
+    }
+    AugmentedPlan::AugmentedPlan(json planjson){
+        node_num = planjson["node_num"];
+        for(int i = 0; i < node_num; i++){
+            AugPlanNode node;
+            node.parent_id = planjson[std::to_string(i)]["parent_id"];
+            node.execute_site = planjson[std::to_string(i)]["execute_site"];
+            node.node_id = planjson[std::to_string(i)]["node_id"];
+            node.sql = planjson[std::to_string(i)]["sql"];
+            node.save_sql = planjson[std::to_string(i)]["save_sql"];
+            augplannodes.push_back(node);
+        }
+    }
 
+    int AugmentedPlan::find_root_id()
+    {
+        for (int i = 0; i < augplannodes.size(); i++)
+        {
+            if (augplannodes[i].parent_id == -1)
+            {
+                return augplannodes[i].node_id;
+            }
+        }
+        return -1;
+    }
     SelectExecutor::SelectExecutor(hsql::SQLParserResult *result, SitesManager &sitesManager, std::string localsitename)
     : manager(sitesManager), localsitename(localsitename)
     {

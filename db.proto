@@ -30,8 +30,7 @@ message ClientResponse {
 };
 
 message ServerRequest {
-      required string msg_type=1;
-      required string msg = 2;
+      required string msg = 1;
 }
 
 message ServerResponse {

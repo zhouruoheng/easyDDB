@@ -19,14 +19,17 @@ namespace server
         std::string execute_site;
         std::string sql;
         std::string save_sql;
-        int is_finished;
     };
 
     class AugmentedPlan
     {
     public:
+        AugmentedPlan(json plan_json);
+        AugmentedPlan() = default;
         int node_num;
         std::vector<AugPlanNode> augplannodes;
+        int find_root_id();
+        json to_json();
     };
     class SelectExecutor
     {
@@ -59,4 +62,6 @@ namespace server
     AugmentedPlan build_augmented_plan(Tree query_tree);
     std::vector<int> find_node_to_build(std::vector<int> &already_built, Tree query_tree);
     AugPlanNode transfer_to_AugNode(Tree query_tree, int i, AugmentedPlan plan);
+    void save_plan_to_etcd(AugmentedPlan plan);
+    AugmentedPlan get_plan_from_etcd();
 }
