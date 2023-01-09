@@ -34,8 +34,12 @@ private:
     std::string execSql(const std::string &sql);
     std::string execPartition(const std::string &msg);
     std::string deal_with_msg(const std::string msg_type, const std::string &msg);
-    const brpc::CallId ServiceImpl::sendMsgAsync(std::string siteName, std::string data);
+    const brpc::CallId sendMsgAsync(std::string siteName, std::string data);
     void onMsgResponse(brpc::Controller* cntl, db::ServerResponse* response);
+    std::string columnname_to_type(std::string name);
+    AugmentedPlan build_augmented_plan(db::opt::Tree query_tree);
+    AugPlanNode transfer_to_AugNode(db::opt::Tree query_tree, int i, AugmentedPlan plan);
+    json sendAsyMsg(std::pair<std::string, std::string> siteName, std::string data);
     Config cfg;
     std::string localSiteName;
     SitesManager sitesManager;

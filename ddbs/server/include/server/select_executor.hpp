@@ -11,6 +11,12 @@
 namespace server
 {
     using db::opt::Tree;
+        class columnzy
+    {
+    public:
+        std::string name;
+        std::string type;
+    };
     class AugPlanNode
     {
     public:
@@ -19,12 +25,6 @@ namespace server
         std::string execute_site;
         std::string sql;
         std::vector<columnzy> columns;
-    };
-    class columnzy
-    {
-    public:
-        std::string name;
-        std::string type;
     };
 
     class AugmentedPlan
@@ -38,34 +38,34 @@ namespace server
         json to_json();
         vector<int> get_children_list(int node_id);
     };
-    class SelectExecutor
-    {
-    public:
-        AugmentedPlan plan;
-        SitesManager &manager;
-        std::string localsitename;
+    // class SelectExecutor
+    // {
+    // public:
+    //     AugmentedPlan plan;
+    //     SitesManager &manager;
+    //     std::string localsitename;
 
-        SelectExecutor(hsql::SQLParserResult *result, SitesManager &sitesManager, std::string localsitename);
-        SelectExecutor(SitesManager &sitesManager, std::string localsitename, AugmentedPlan plan);
-        SelectExecutor() = default;
-        ~SelectExecutor() = default;
-        std::string get_result();
+    //     SelectExecutor(hsql::SQLParserResult *result, SitesManager &sitesManager, std::string localsitename);
+    //     SelectExecutor(SitesManager &sitesManager, std::string localsitename, AugmentedPlan plan);
+    //     SelectExecutor() = default;
+    //     ~SelectExecutor() = default;
+    //     std::string get_result();
 
-        std::string data_push(int node_id, std::string sql, std::string target_site_name, AugmentedPlan plan, int is_root);
-        void delete_data(int node_id);
+    //     std::string data_push(int node_id, std::string sql, std::string target_site_name, AugmentedPlan plan, int is_root);
+    //     void delete_data(int node_id);
 
-        std::string execute();
-        void save_plan_to_etcd(AugmentedPlan plan);
-        AugmentedPlan get_plan_from_etcd();
-        std::string data_receive(std::string msg);
-        std::string site_execute(std::string msg);
-        std::string plan_scan();
-    };
-    std::string deal_with_order(const std::string &msg, SitesManager &sitesManager, std::string localsitename);
-    std::string deal_with_data(const std::string &msg, SitesManager &sitesManager, std::string localsitename);
-    AugmentedPlan build_augmented_plan(Tree query_tree);
-    std::vector<int> find_node_to_build(std::vector<int> &already_built, Tree query_tree);
-    AugPlanNode transfer_to_AugNode(Tree query_tree, int i, AugmentedPlan plan);
-    void save_plan_to_etcd(AugmentedPlan plan);
-    AugmentedPlan get_plan_from_etcd();
+    //     std::string execute();
+    //     void save_plan_to_etcd(AugmentedPlan plan);
+    //     AugmentedPlan get_plan_from_etcd();
+    //     std::string data_receive(std::string msg);
+    //     std::string site_execute(std::string msg);
+    //     std::string plan_scan();
+    // };
+    // std::string deal_with_order(const std::string &msg, SitesManager &sitesManager, std::string localsitename);
+    // std::string deal_with_data(const std::string &msg, SitesManager &sitesManager, std::string localsitename);
+    // AugmentedPlan build_augmented_plan(Tree query_tree);
+    // std::vector<int> find_node_to_build(std::vector<int> &already_built, Tree query_tree);
+    // AugPlanNode transfer_to_AugNode(Tree query_tree, int i, AugmentedPlan plan);
+    // void save_plan_to_etcd(AugmentedPlan plan);
+    // AugmentedPlan get_plan_from_etcd();
 }

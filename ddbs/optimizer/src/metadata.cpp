@@ -13,7 +13,7 @@
 存储分片上的数据量 </table/Publisher/fragment/1/size, 100>
 存储分片所在的位置 </table/Publisher/fragment/1/pos, 1> 1号分片在1号站点
 */
-
+const char *base64_key = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 string EncodeBase64(const string inputStr)
 {
     string strEncode;

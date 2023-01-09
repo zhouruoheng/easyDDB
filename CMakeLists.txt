@@ -167,6 +167,18 @@ include_directories(${READLINE_INCLUDE_PATH})
 set(JSON_BuildTests OFF CACHE INTERNAL "")
 add_subdirectory(package/nlohmann_json)
 
+# -------------------------------- stdjson ----------------------------------------
+find_path(JSON_INCLUDE_PATH NAMES json/json.h)
+find_library(JSON_LIB NAMES jsoncpp)
+
+include_directories(${JSON_INCLUDE_PATH})
+
+
+# ------------------------------curl-----------------------------------------------
+find_package(CURL REQUIRED)
+
+
+
 # ------------------------------ Copy Resources -----------------------------------
 
 file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/res DESTINATION ${CMAKE_BINARY_DIR})
@@ -186,7 +198,7 @@ target_link_libraries(IR SQLParser nlohmann_json::nlohmann_json)
 file(GLOB_RECURSE optimizer_srcs CONFIGURE_DEPENDS ddbs/optimizer/src/*.cpp ddbs/optimizer/include/*.hpp ddbs/optimizer/include/*.h)
 add_library(optimizer STATIC ${optimizer_srcs})
 target_include_directories(optimizer PUBLIC ddbs/optimizer/include)
-target_link_libraries(optimizer PUBLIC IR mysqlclient)
+target_link_libraries(optimizer PUBLIC IR mysqlclient CURL::libcurl ${JSON_LIB})
 
 add_executable(client ${client_srcs} ${PROTO_SRC} ${PROTO_HEADER})
 target_include_directories(client PUBLIC ddbs/client/include)
@@ -195,3 +207,4 @@ target_link_libraries(client ${BRPC_LIB} ${DYNAMIC_LIB} ${READLINE_LIB} IR)
 add_executable(server ${server_srcs} ${PROTO_SRC} ${PROTO_HEADER})
 target_include_directories(server PUBLIC ddbs/server/include)
 target_link_libraries(server ${BRPC_LIB} ${DYNAMIC_LIB} optimizer)
+

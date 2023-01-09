@@ -9,7 +9,7 @@
 using namespace std;
 using namespace Json;
 
-const char *base64_key = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
 //三个字节为一组，编码成四个字节
 string EncodeBase64(const string inputStr);
 string DecodeBase64(const string inputStr);
