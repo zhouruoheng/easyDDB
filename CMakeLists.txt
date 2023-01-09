@@ -4,8 +4,6 @@ project(ddbs LANGUAGES C CXX)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # ------------------------------ SET BRPC --------------------------------------------
@@ -150,6 +148,13 @@ set_target_properties(SQLParser PROPERTIES IMPORTED_LOCATION_NOCONFIG "${SQLPars
 
 add_dependencies(SQLParser build_SQLParser)
 
+# ------------------------------ MySQL -------------------------------------------
+
+find_path(MySQL_INCLUDE_PATH NAMES mysql/mysql.h)
+find_library(MySQL_LIB NAMES mysqlclient)
+
+include_directories(${MySQL_INCLUDE_PATH})
+
 # ------------------------------ Readline -----------------------------------------
 
 find_path(READLINE_INCLUDE_PATH NAMES readline/readline.h)
@@ -168,24 +173,20 @@ file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/res DESTINATION ${CMAKE_BINARY_DIR})
 
 # ------------------------------ Executable ---------------------------------------
 
-file(GLOB_RECURSE client_srcs CONFIGURE_DEPENDS ddbs/client/src/*.cpp ddbs/client/include/*.hpp)
+file(GLOB_RECURSE client_srcs CONFIGURE_DEPENDS ddbs/client/src/*.cpp ddbs/client/include/*.hpp ddbs/client/include/*.h)
 
-file(GLOB_RECURSE server_srcs CONFIGURE_DEPENDS ddbs/server/src/*.cpp ddbs/server/include/*.hpp)
+file(GLOB_RECURSE server_srcs CONFIGURE_DEPENDS ddbs/server/src/*.cpp ddbs/server/include/*.hpp ddbs/server/include/*.h)
 
-file(GLOB_RECURSE sqlite_srcs CONFIGURE_DEPENDS package/sqlite3/src/*.c package/sqlite3/include/*.h)
-add_library(sqlite STATIC ${sqlite_srcs})
-target_include_directories(sqlite PUBLIC package/sqlite3/include)
-
-file(GLOB_RECURSE IR_srcs CONFIGURE_DEPENDS ddbs/IR/src/*.cpp ddbs/IR/include/*.hpp)
+file(GLOB_RECURSE IR_srcs CONFIGURE_DEPENDS ddbs/IR/src/*.cpp ddbs/IR/include/*.hpp ddbs/IR/include/*.h)
 add_library(IR STATIC ${IR_srcs})
 target_include_directories(IR PUBLIC ddbs/IR/include)
 target_include_directories(IR PUBLIC package/sql-parser/src)
 target_link_libraries(IR SQLParser nlohmann_json::nlohmann_json)
 
-file(GLOB_RECURSE optimizer_srcs CONFIGURE_DEPENDS ddbs/optimizer/src/*.cpp ddbs/optimizer/include/*.hpp)
+file(GLOB_RECURSE optimizer_srcs CONFIGURE_DEPENDS ddbs/optimizer/src/*.cpp ddbs/optimizer/include/*.hpp ddbs/optimizer/include/*.h)
 add_library(optimizer STATIC ${optimizer_srcs})
 target_include_directories(optimizer PUBLIC ddbs/optimizer/include)
-target_link_libraries(optimizer PUBLIC IR)
+target_link_libraries(optimizer PUBLIC IR mysqlclient)
 
 add_executable(client ${client_srcs} ${PROTO_SRC} ${PROTO_HEADER})
 target_include_directories(client PUBLIC ddbs/client/include)
@@ -193,4 +194,4 @@ target_link_libraries(client ${BRPC_LIB} ${DYNAMIC_LIB} ${READLINE_LIB} IR)
 
 add_executable(server ${server_srcs} ${PROTO_SRC} ${PROTO_HEADER})
 target_include_directories(server PUBLIC ddbs/server/include)
-target_link_libraries(server ${BRPC_LIB} ${DYNAMIC_LIB} sqlite optimizer)
+target_link_libraries(server ${BRPC_LIB} ${DYNAMIC_LIB} optimizer)

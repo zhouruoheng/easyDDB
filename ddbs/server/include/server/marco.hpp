@@ -17,7 +17,7 @@
 #include <SQLParser.h>
 #include <util/sqlhelper.h>
 #include <IR/query.hpp>
-#include <IR/selectquery.hpp>
+
 
 namespace server {
 

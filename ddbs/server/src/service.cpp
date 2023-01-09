@@ -2,7 +2,7 @@
 
 namespace server
 {
-
+    
     ServiceImpl::ServiceImpl()
         : localSiteName(FLAGS_site_name), sitesManager(), dbManager(FLAGS_site_name), requestID(0)
     {
@@ -77,7 +77,7 @@ namespace server
                   << " (attached=" << cntl->request_attachment() << ")";
 
         uint64_t log_id = cntl->log_id();
-        if (request->msg_type == "main")
+        if (request->msg_type() == "main")
         {
             json data = json::parse(request->msg());
             json resp_data = json::object({{"info", "(success)"},
@@ -298,11 +298,11 @@ namespace server
         }
         else
         {
-            string response_message = deal_with_msg(request->msg_type(), request->msg(), sitesManager, localSiteName);
+            string response_message = deal_with_msg(request->msg_type(), request->msg());
             response->set_msg(response_message);
         }
     }
-    std::string ServiceImpl::deal_with_msg(const std::string msg_type, const std::string &msg, SitesManager &manager, const std::string &localSiteName)
+    std::string ServiceImpl::deal_with_msg(const std::string msg_type, const std::string &msg)
     {
         std::string response_message;
         // if (msg_type == "sql")
@@ -313,17 +313,13 @@ namespace server
         // {
         //     response_message = db::config(msg, manager); // 面向cli的两个接口之一，用于处理前端发来的配置信息，这里可以最后一周实现
         // }
-        if (msg_type == "order")
+        if (msg_type == "data_push")
         {
-            response_message = site_execute(msg, manager, localSiteName); // 这里是对plan的处理，会写到site_executor.h中
-        }
-        else if (msg_type == "data_push")
-        {
-            response_message = data_receive(msg, manager, localSiteName); // 这里是对plan的处理，会写到site_executor.h中
+            response_message = deal_with_data(msg, sitesManager, localSiteName); // 这里是对plan的处理，会写到site_executor.h中
         }
         else if (msg_type == "site_execute")
         {
-            response_message = site_plan_execute(msg, manager, localSiteName); // 这里是对plan的处理，会写到site_executor.h中
+            response_message = deal_with_order(msg, sitesManager, localSiteName); // 这里是对plan的处理，会写到site_executor.h中
         }
         else
         {
@@ -331,90 +327,6 @@ namespace server
         }
 
         return response_message;
-    }
-    std::string send_site_message(std::string msg_type, std::string site_name, std::string data)
-    {
-        brpc::Channel *channel = sitesManager.getChannel(siteName);
-        db::Service_Stub stub(channel);
-        db::ServerRequest request;
-        db::ServerResponse response;
-        brpc::Controller cntl;
-        request.set_msg_type(msg_type);
-
-        request.set_msg(data);
-
-        cntl.set_log_id(requestID++); // set by user
-        // Set attachment which is wired to network directly instead of
-        // being serialized into protobuf messages.
-        cntl.request_attachment().append("attachment");
-
-        // Because `done'(last parameter) is NULL, this function waits until
-        // the response comes back or error occurs(including timedout).
-        stub.ServerMsg(&cntl, &request, &response, NULL);
-        if (!cntl.Failed())
-        {
-            LOG(INFO) << "(success) Received response from " << cntl.remote_side()
-                      << " to " << cntl.local_side()
-                      << ": " << response.msg() << " (attached="
-                      << cntl.response_attachment() << ")"
-                      << " latency=" << cntl.latency_us() << "us" << std::endl;
-            return response.msg();
-        }
-        else
-        {
-            std::stringstream ss;
-            ss << cntl.ErrorText();
-            return ss.str();
-        }
-    } // 发送数据到site----zy
-    json ServiceImpl::sendMsg(std::string siteName, std::string data)
-    {
-        brpc::Channel *channel = sitesManager.getChannel(siteName);
-        db::Service_Stub stub(channel);
-        db::ServerRequest request;
-        db::ServerResponse response;
-        brpc::Controller cntl;
-        request.set_msg_type("main");
-        request.set_msg(data);
-        
-
-        cntl.set_log_id(requestID++); // set by user
-        // Set attachment which is wired to network directly instead of
-        // being serialized into protobuf messages.
-        cntl.request_attachment().append("attachment");
-
-        // Because `done'(last parameter) is NULL, this function waits until
-        // the response comes back or error occurs(including timedout).
-        stub.ServerMsg(&cntl, &request, &response, NULL);
-        if (!cntl.Failed())
-        {
-            LOG(INFO) << "(success) Received response from " << cntl.remote_side()
-                      << " to " << cntl.local_side()
-                      << ": " << response.msg() << " (attached="
-                      << cntl.response_attachment() << ")"
-                      << " latency=" << cntl.latency_us() << "us" << std::endl;
-            return json::parse(response.msg());
-        }
-        else
-        {
-            std::stringstream ss;
-            ss << cntl.ErrorText();
-            return json::object({{"info", ss.str()},
-                                 {"content", nullptr}});
-        }
-    };
-
-    json ServiceImpl::broadcastMsg(std::string data)
-    {
-        for (auto &p : sitesManager.channelMap)
-        {
-            json resp = sendMsg(p.first, data);
-            std::string info = resp["info"].get<std::string>();
-            if (info != "(success)")
-                return resp;
-        }
-        return json::object({{"info", "(success)"},
-                             {"content", nullptr}});
     }
 
     std::string ServiceImpl::execSql(const std::string &sql)
@@ -427,10 +339,101 @@ namespace server
             const hsql::SQLStatement *statement = result.getStatement(0);
 
             if (statement->isType(hsql::kStmtSelect))
+            {      
+                vector<metadataTable> Tables = db::opt::getMetadata();
+                db::opt::Tree optimized_tree = db::opt::SelectProcess(Tables, result);
+                
+
+            }
+            else if (statement->isType(hsql::kStmtInsert))
             {
-                SelectExecutor selectexecutor=SelectExecutor(result, sitesManager, localSiteName);
-                std::string usResult = selectexecutor.execute();
-                return usResult;
+                const auto *insert = static_cast<const hsql::InsertStatement *>(statement);
+                std::shared_ptr<server::FragInsertStat> fragInsert;
+                try
+                {
+                    fragInsert = InsertStat(insert).buildFragInsertStatment(cfg);
+                }
+                catch (const char *msg)
+                {
+                    return msg;
+                }
+                for (auto &p : fragInsert->fragData)
+                {
+                    auto &site = p.first;
+                    auto &insertData = p.second;
+                    json data{
+                        {"type", "insert"},
+                        {"site", localSiteName},
+                        {"content",
+                         {{"table", fragInsert->table},
+                          {"data", json::array()}}}};
+                    for (auto &row : insertData)
+                        data["content"]["data"].push_back(row);
+                    json resp = sendMsg(site, data.dump());
+                    std::string info = resp["info"].get<std::string>();
+                    if (info != "(success)")
+                        return info;
+                }
+                return "(success)";
+            }
+            else if (statement->isType(hsql::kStmtCreate))
+            {
+                const auto *create = static_cast<const hsql::CreateStatement *>(statement);
+                std::shared_ptr<server::FragCreateStat> fragCreate;
+                try
+                {
+                    fragCreate = CreateStat(create).buildFragCreateStatment(cfg);
+                }
+                catch (const char *msg)
+                {
+                    return msg;
+                }
+                // update Config
+                CreateStat createStat(create);
+                json columnDefs;
+                for (auto &cInfo : createStat.columns)
+                {
+                    columnDefs.push_back({{"columnName", cInfo.name},
+                                          {"columnType", ColumnType2String(cInfo.columnType)}});
+                    etcd_set(cInfo.name, ColumnType2String(cInfo.columnType));
+                }
+                json updateConfig{
+                    {"type", "updateConfig"},
+                    {"site", localSiteName},
+                    {"content",
+                     {{"tableInfo",
+                       {{createStat.table, columnDefs}}}}}};
+                json resp = broadcastMsg(updateConfig.dump());
+                std::string info = resp["info"].get<std::string>();
+                if (info != "(success)")
+                    return info;
+
+                // send create table
+                for (auto &site : fragCreate->sites)
+                {
+                    json data{
+                        {"type", "create"},
+                        {"site", localSiteName},
+                        {"content",
+                         {
+                             {"table", fragCreate->table},
+                             {"columns", json::array()} // {name, type}
+                         }}};
+                    for (auto &col : fragCreate->columns)
+                        data["content"]["columns"].push_back({{"name", col.name},
+                                                              {"type", col.columnType}});
+                    json resp = sendMsg(site, data.dump());
+                    std::string info = resp["info"].get<std::string>();
+                    if (info != "(success)")
+                        return info;
+                }
+                return "(success)";
+            }
+            else if (statement->isType(hsql::kStmtDelete))
+            {
+            }
+            else if (statement->isType(hsql::kStmtDrop))
+            {
             }
             // {
             //     const auto *select = static_cast<const hsql::SelectStatement *>(statement);
@@ -569,107 +572,16 @@ namespace server
             //     dropFn(fragSelect);
             //     return usResult.dump();
         }
-        else if (statement->isType(hsql::kStmtInsert))
-        {
-            const auto *insert = static_cast<const hsql::InsertStatement *>(statement);
-            std::shared_ptr<server::FragInsertStat> fragInsert;
-            try
-            {
-                fragInsert = InsertStat(insert).buildFragInsertStatment(cfg);
-            }
-            catch (const char *msg)
-            {
-                return msg;
-            }
-            for (auto &p : fragInsert->fragData)
-            {
-                auto &site = p.first;
-                auto &insertData = p.second;
-                json data{
-                    {"type", "insert"},
-                    {"site", localSiteName},
-                    {"content",
-                     {{"table", fragInsert->table},
-                      {"data", json::array()}}}};
-                for (auto &row : insertData)
-                    data["content"]["data"].push_back(row);
-                json resp = sendMsg(site, data.dump());
-                std::string info = resp["info"].get<std::string>();
-                if (info != "(success)")
-                    return info;
-            }
-            return "(success)";
-        }
-        else if (statement->isType(hsql::kStmtCreate))
-        {
-            const auto *create = static_cast<const hsql::CreateStatement *>(statement);
-            std::shared_ptr<server::FragCreateStat> fragCreate;
-            try
-            {
-                fragCreate = CreateStat(create).buildFragCreateStatment(cfg);
-            }
-            catch (const char *msg)
-            {
-                return msg;
-            }
-            // update Config
-            CreateStat createStat(create);
-            json columnDefs;
-            for (auto &cInfo : createStat.columns)
-            {
-                columnDefs.push_back({{"columnName", cInfo.name},
-                                      {"columnType", ColumnType2String(cInfo.columnType)}});
-                etcd_set(cInfo.name, ColumnType2String(cInfo.columnType));
-            }
-            json updateConfig{
-                {"type", "updateConfig"},
-                {"site", localSiteName},
-                {"content",
-                 {{"tableInfo",
-                   {{createStat.table, columnDefs}}}}}};
-            json resp = broadcastMsg(updateConfig.dump());
-            std::string info = resp["info"].get<std::string>();
-            if (info != "(success)")
-                return info;
-
-            // send create table
-            for (auto &site : fragCreate->sites)
-            {
-                json data{
-                    {"type", "create"},
-                    {"site", localSiteName},
-                    {"content",
-                     {
-                         {"table", fragCreate->table},
-                         {"columns", json::array()} // {name, type}
-                     }}};
-                for (auto &col : fragCreate->columns)
-                    data["content"]["columns"].push_back({{"name", col.name},
-                                                          {"type", col.columnType}});
-                json resp = sendMsg(site, data.dump());
-                std::string info = resp["info"].get<std::string>();
-                if (info != "(success)")
-                    return info;
-            }
-            return "(success)";
-        }
-        else if (statement->isType(hsql::kStmtDelete))
-        {
-        }
-        else if (statement->isType(hsql::kStmtDrop))
-        {
-        }
+        return "[sql is not valid]";
     }
-    return "[sql is not valid]";
-}
 
-std::string ServiceImpl::execPartition(const std::string &msg)
-{
-    json updateConfig = json::parse(msg);
-    json resp = broadcastMsg(updateConfig.dump());
-    std::string info = resp["info"].get<std::string>();
-    if (info != "(success)")
-        return info;
-    return "(success)";
-}
+    std::string ServiceImpl::execPartition(const std::string &msg)
+    {
+        json updateConfig = json::parse(msg);
+        json resp = broadcastMsg(updateConfig.dump());
+        std::string info = resp["info"].get<std::string>();
+        if (info != "(success)")
+            return info;
+        return "(success)";
+    }
 }

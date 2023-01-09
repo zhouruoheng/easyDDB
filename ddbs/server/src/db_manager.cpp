@@ -2,85 +2,80 @@
 
 namespace server {
 
-DbManager::DbManager(std::string site_name) {
-    std::string db_name = "database/" + site_name + ".db";
-    int rc = sqlite3_open(db_name.c_str(), &db);
-    if (rc) {
-        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
-        sqlite3_close(db);
-        exit(-1);
-    }    
+DbManager::DbManager(std::string _unix_socket) 
+: unix_socket(_unix_socket) {
 }
 
 DbManager::~DbManager() {
-    sqlite3_close(db);
 }
-
-json DbManager::getTableInfo(const Table &table) {
-    json data;
-    sqlite3_stmt *stmt;
-    int rc;
-    //where rc is an int variable if wondering :/
-    std::string sql = "pragma table_info ( " + table + " );";
-    rc = sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, NULL);
-    if (rc!=SQLITE_OK)
-    {
-        fprintf(stderr, "SQL prepare error");
-        exit(-1);
-    }
-    while(sqlite3_step(stmt) == SQLITE_ROW)
-    {
-        std::string columnName = (char*)sqlite3_column_text(stmt, 1);
-        std::string columnType = (char*)sqlite3_column_text(stmt, 2);
-        data[columnName] = columnType;
-    }
-    sqlite3_finalize(stmt);
-    return data;
-}
-
 
 json DbManager::execSelectSql(const std::string &sql, const Table &table) {
     LOG(INFO) << "(DBManager): execSelectSql: " << sql << std::endl;
-    json data{
-        {"columns", json::array()},
-        {"columnTypes", nullptr},
-        {"data", json::array()},
-    };
-    char **azResult = 0;
-    int nRow = 0;
-    int nColumn = 0;
-    char *zErrMsg = 0;
-    int rc; 
-    rc = sqlite3_get_table(db, sql.c_str(), &azResult, &nRow, &nColumn, &zErrMsg);
-    if (rc != SQLITE_OK) {
-        fprintf(stderr, "SQL error: %s\n", zErrMsg);
-        sqlite3_free(zErrMsg);
-        exit(-1);
-    }
-    for (int i = 0; i < nColumn; i++)
-        data["columns"].push_back(azResult[i]);
-    for (int i = 0; i < nRow; i++) {
-        json row = json::array();
-        for (int j = 0; j < nColumn; j++) {
-            int index = i * nColumn + j + nColumn;
-            row.push_back(azResult[index]);
+    int PORT = 3316;
+    MYSQL connection;
+    mysql_init(&connection);
+    if (mysql_real_connect(&connection, "127.0.0.1", "root", "12345678", "ddb", PORT, unix_socket.c_str(), CLIENT_FOUND_ROWS))
+    {
+        int res = mysql_query(&connection, sql.c_str());
+        if (res)
+        {
+            LOG(INFO) << "[select sql error]: " << sql << std::endl;
+            mysql_close(&connection);
+            return {
+                {"info", nullptr},
+                {"content", nullptr}
+            };
         }
-        data["data"].push_back(row);
+        MYSQL_RES *result = mysql_store_result(&connection);
+        if (result == NULL)
+        {
+            LOG(INFO) << "[select sql error, result empty]: " << sql << std::endl;
+            mysql_close(&connection);
+            return {
+                {"info", nullptr},
+                {"content", nullptr}
+            };
+        }
+        json json_result = {
+            {"info", "(success)"},
+            {"content", json::array()}
+        };
+        int nCol = mysql_num_fields(result);
+        MYSQL_ROW row;
+        std::string query_res;
+        while (row = mysql_fetch_row(result))
+        {
+            json json_row = json::array();
+            for (int i = 0; i < nCol; i++)
+                json_row.push_back(std::string(row[i]));
+            json_result["content"].push_back(json_row);
+        }
+        mysql_free_result(result);
+        mysql_close(&connection);
+        return json_result;
     }
-    sqlite3_free_table(azResult);
-    data["columnTypes"] = getTableInfo(table);
-    return data;
+    LOG(INFO) << "[connection error] "<< std::endl;
+    exit(-1);
 }
 
 void DbManager::execNotSelectSql(const std::string &sql) {
     LOG(INFO) << "(DBManager): execNotSelectSql: " << sql << std::endl;
-    char *zErrMsg = 0;
-    int rc = sqlite3_exec(db, sql.c_str(), nullptr, 0, &zErrMsg);
-    if (rc != SQLITE_OK) {
-        fprintf(stderr, "SQL error: %s\n", zErrMsg);
-        sqlite3_free(zErrMsg);
-        exit(-1);
+    int PORT = 3316;
+    MYSQL connection;
+    mysql_init(&connection);
+    if (mysql_real_connect(&connection, "127.0.0.1", "root", "12345678", "ddb", PORT, unix_socket.c_str(), CLIENT_FOUND_ROWS))
+    {
+        int res = mysql_query(&connection, sql.c_str());
+        if (res)
+        {
+            LOG(INFO) << "[sql error]: " << sql << std::endl;
+            mysql_close(&connection);
+            exit(-1);
+        }
+        mysql_close(&connection);
     }
+    LOG(INFO) << "[connection error] "<< std::endl;
+    exit(-1);
 }
 
 }

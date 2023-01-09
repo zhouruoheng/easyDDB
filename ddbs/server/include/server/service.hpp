@@ -3,6 +3,7 @@
 #include <server/marco.hpp>
 #include <server/sites_manager.hpp>
 #include <server/db_manager.hpp>
+#include <server/select_executor.hpp>
 
 // Your implementation of db::ClientService
 // Notice that implementing brpc::Describable grants the ability to put
@@ -32,7 +33,7 @@ private:
 
     std::string execSql(const std::string &sql);
     std::string execPartition(const std::string &msg);
-    std::string deal_with_msg(const std::string msg_type, const std::string &msg)
+    std::string deal_with_msg(const std::string msg_type, const std::string &msg);
 
     Config cfg;
     std::string localSiteName;
