@@ -2,6 +2,159 @@
 
 namespace server
 {
+    AugmentedPlan build_augmented_plan(db::opt::Tree query_tree)
+    {
+        AugmentedPlan plan;
+        // get the total num of query_tree.tr
+        plan.node_num = query_tree.tr.size();
+        for (int i = 0; i < plan.node_num; i++)
+        {
+            plan.augplannodes.push_back(transfer_to_AugNode(query_tree, i, plan));
+        }
+        return plan;
+    }
+    AugPlanNode transfer_to_AugNode(db::opt::Tree query_tree, int i, AugmentedPlan plan)
+    {
+        AugPlanNode node;
+        node.node_id = i;
+        node.parent_id = query_tree.tr[i].parent;
+        node.execute_site = "ddb"+std::to_string(query_tree.tr[i].site);
+        std::string select_what="";
+        std::string from_what="";
+        std::string where_what="";
+        if(query_tree.tr[i].type=="Fragment"){
+            if(query_tree.tr[i].projection.size()==0){
+                for(auto &col:query_tree.tr[i].attr){
+                    //replace . to _ 
+                    col=col.replace(col.find("."),1,"_");
+                    select_what+=col+",";
+                    columnzy column;
+                    column.name = col;
+                    column.type = columnname_to_type(col);
+                    node.columns.push_back(column);
+                }
+                select_what=select_what.substr(0,select_what.size()-1);
+            }
+            else{
+                for(auto &col:query_tree.tr[i].projection){
+                    //replace . to _
+                    col=col.replace(col.find("."),1,"_");
+                    select_what+=col+",";
+                    columnzy column;
+                    column.name = col;
+                    column.type = columnname_to_type(col);
+                    node.columns.push_back(column);
+                }
+                select_what=select_what.substr(0,select_what.size()-1);
+            }
+            from_what=query_tree.tr[i].fname.first;
+            std::string sql="select "+select_what+" from "+from_what;
+        }
+        else if(query_tree.tr[i].type=="Union")
+        {
+            std::string sql=""
+            std::vector<int> all_child=query_tree.tr[i].child;
+            for(auto &child:all_child){
+                select_what="*";
+                from_what="Node"+std::to_string(child);
+                if(child!=all_child.back())
+                    sql+="select "+select_what+" from "+from_what+" union ";
+                else{
+                    sql+="select "+select_what+" from "+from_what;
+                    for(auto &col:query_tree.tr[i].attr){
+                        columnzy column;
+                        column.name = col;
+                        column.type = columnname_to_type(col);
+                        node.columns.push_back(column);
+                    }
+                }
+            }
+
+        }
+        else if(query_tree.tr[i].type=="Join"){
+            std::string sql="";
+        }
+        node.sql = sql;
+        return node;
+    }
+    std::string columnname_to_type(std::string name)
+    {   
+        //split name to tablename and columnname
+        std::string tablename=name.substr(0,name.find("_"));
+        std::string columnname=name.substr(name.find("_")+1);
+        vector<ColumnDef> types=cfg.tableInfo.find(tablename)->second;
+        for(auto &type:types)
+        {
+            if(type.name==columnname)
+            {
+                return type.type;
+            }
+        }
+    }
+    const brpc::CallId ServiceImpl::sendMsgAsync(std::string siteName, std::string data)
+    {
+        brpc::Channel *channel = sitesManager.getChannel(siteName);
+        db::Service_Stub stub(channel);
+        db::ServerRequest request;
+        db::ServerResponse *response;
+        brpc::Controller *cntl;
+        request.set_msg(data);
+
+        cntl->set_log_id(requestID++); // set by user
+        // Set attachment which is wired to network directly instead of
+        // being serialized into protobuf messages.
+        cntl->request_attachment().append("attachment");
+        const brpc::CallId cid = cntl->call_id();
+        google::protobuf::Closure *done = brpc::NewCallback(&ServiceImpl::onMsgResponse, cntl, response);
+        stub.ServerMsg(cntl, &request, response, done);
+        return cid;
+    }
+    void ServiceImpl::onMsgResponse(brpc::Controller *cntl, db::ServerResponse *response)
+    {
+        if (!cntl->Failed())
+        {
+            LOG(INFO) << "(success) Received response from " << cntl->remote_side()
+                      << " to " << cntl->local_side()
+                      << ": " << response->msg() << " (attached="
+                      << cntl->response_attachment() << ")"
+                      << " latency=" << cntl->latency_us() << "us" << std::endl;
+            json data = json::parse(response->msg());
+            Table table = data["content"]["content"]["table"].get<Table>();
+            std::string typeClause = "";
+            for (auto &col : data["content"]["columns"])
+            {
+                if (typeClause.size() > 0)
+                    typeClause += " , ";
+                typeClause += col["name"].get<std::string>() + " " + Datatype2String((hsql::DataType)col["type"].get<int>());
+            }
+            std::string sql = "create table " + table + "(" + typeClause + ");";
+            dbManager.execNotSelectSql(sql);
+            std::string valueClause = "";
+            for (auto &row : data["content"]["data"])
+            {
+                std::string rowClause = "";
+                for (auto &item : row)
+                {
+                    if (rowClause.size() > 0)
+                        rowClause += ",";
+                    rowClause += Value2String(item);
+                }
+                if (valueClause.size() > 0)
+                    valueClause += ",";
+                valueClause += "(" + rowClause + ")";
+            }
+            sql = "insert into " + table + " values " + valueClause + ";";
+            dbManager.execNotSelectSql(sql);
+        }
+        else
+        {
+            std::stringstream ss;
+            ss << cntl->ErrorText();
+            LOG(ERROR) << ss.str();
+        }
+        delete cntl;
+        delete response;
+    }
 
     ServiceImpl::ServiceImpl()
         : localSiteName(FLAGS_site_name), sitesManager(), dbManager(FLAGS_site_name), requestID(0)
@@ -293,10 +446,42 @@ namespace server
         }
         else if (dataType == "start_execute")
         {
-            int execute_node=data["content"]["execute_node"].get<int>();
-            AugmentedPlan plan=AugmentedPlan((data["content"]["plan"].get<json>()));
-            
-
+            int execute_node = data["content"]["execute_node"].get<int>();
+            AugmentedPlan plan = AugmentedPlan((data["content"]["plan"].get<json>()));
+            vector<int> children_list = plan.get_children_list(execute_node);
+            vector<brpc::CallId> cids;
+            for (auto &child : children_list)
+            {
+                json child_data{
+                    {"type", "start_execute"},
+                    {"site", localSiteName},
+                    {"content",
+                     {{"execute_node", std::to_string(child)}, {"plan", plan.to_json()}}}};
+                std::string child_msg = child_data.dump();
+                cids.push_back(sendMsgAsync(plan.augplannodes[child].execute_site, child_msg));
+            }
+            for (auto &cid : cids)
+            {
+                brpc::Join(cid);
+            }
+            json data{
+                {"table", "Node" + std::to_string(execute_node)},
+                {"data", json::array()},
+                {"columns", json::array()} // {name, type}
+            };
+            for (auto &col : plan.augplannodes[execute_node].columns)
+                data["columns"].push_back({{"name", col.name},
+                                           {"type", col.type}});
+            std::string sql = plan.augplannodes[execute_node].sql;
+            Table table = "Node" + std::to_string(execute_node);
+            json::array data2 = dbManager.execSelectSql(sql, table);
+            data["data"] = data2["content"];
+            for (auto &child : children_list)
+            {
+                std::string sql = "drop table " + "Node" + std::to_string(child) + ";";
+                dbManager.execNotSelectSql(sql);
+            }
+            resp_data["content"] = data;
         }
     END:
         response->set_msg(resp_data.dump());
@@ -348,11 +533,9 @@ namespace server
                     {"type", "start_execute"},
                     {"site", localSiteName},
                     {"content",
-                     {{"execute_node", std::to_string(root_id)}
-                     ,{"plan",plan.to_json()
-                     }}}};
+                     {{"execute_node", std::to_string(root_id)}, {"plan", plan.to_json()}}}};
                 json response = sendMsg(root_site, data.dump());
-                return response.dump();//此处为brpc同步通信
+                return response.dump(); // 此处为brpc同步通信
             }
             // 发送包的定义                    {"type", "site_execute"},
             //          {"site", localSiteName},

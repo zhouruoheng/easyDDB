@@ -2,32 +2,60 @@
 #include <thread>
 #include <iostream>
 
-
-
 namespace server
 {
-    json AugmentedPlan::to_json(){
+
+    vector<int> AugmentedPlan::get_children_list(int node_id)
+    {
+        vector<int> children_list;
+        for (int i = 0; i < augplannodes.size(); i++)
+        {
+            if (augplannodes[i].parent_id == node_id)
+            {
+                children_list.push_back(augplannodes[i].node_id);
+            }
+        }
+        return children_list;
+    }
+    json AugmentedPlan::to_json()
+    {
         json j;
         j["node_num"] = node_num;
-        for(int i = 0; i < node_num; i++){
+        for (int i = 0; i < node_num; i++)
+        {
+            j[std::to_string(i)]["sql"] = augplannodes[i].sql;
             j[std::to_string(i)]["parent_id"] = augplannodes[i].parent_id;
             j[std::to_string(i)]["execute_site"] = augplannodes[i].execute_site;
-            j[std::to_string(i)]["node_id"] = augplannodes[i].node_id;
-            j[std::to_string(i)]["sql"] = augplannodes[i].sql;
-            j[std::to_string(i)]["save_sql"] = augplannodes[i].save_sql;
+            json columns;
+            for (auto column : augplannodes[i].columns)
+            {
+                json col;
+                col["name"] = column.name;
+                col["type"] = column.type;
+                columns.push_back(col);
+            }
+            j[std::to_string(i)]["columns"] = columns;
         }
         return j;
     }
-    AugmentedPlan::AugmentedPlan(json planjson){
+    AugmentedPlan::AugmentedPlan(json planjson)
+    {
         node_num = planjson["node_num"];
-        for(int i = 0; i < node_num; i++){
+        for (int i = 0; i < node_num; i++)
+        {
             AugPlanNode node;
+            node.sql = planjson[std::to_string(i)]["sql"];
+            node.node_id = i;
             node.parent_id = planjson[std::to_string(i)]["parent_id"];
             node.execute_site = planjson[std::to_string(i)]["execute_site"];
-            node.node_id = planjson[std::to_string(i)]["node_id"];
-            node.sql = planjson[std::to_string(i)]["sql"];
-            node.save_sql = planjson[std::to_string(i)]["save_sql"];
-            augplannodes.push_back(node);
+            json::array columns = planjson[std::to_string(i)]["columns"];
+            for (auto column : columns)
+            {
+                columnzy col;
+                col.name = column["name"];
+                col.type = column["type"];
+                node.columns.push_back(col);
+            }
         }
     }
 
@@ -43,7 +71,7 @@ namespace server
         return -1;
     }
     SelectExecutor::SelectExecutor(hsql::SQLParserResult *result, SitesManager &sitesManager, std::string localsitename)
-    : manager(sitesManager), localsitename(localsitename)
+        : manager(sitesManager), localsitename(localsitename)
     {
         db::opt::Tree queryTree;
         vector<metadataTable> Tables = db::opt::getMetadata();
@@ -52,9 +80,8 @@ namespace server
         this->plan = aug_plan;
     }
     SelectExecutor::SelectExecutor(SitesManager &sitesManager, std::string localsitename, AugmentedPlan plan)
-    : manager(sitesManager), localsitename(localsitename), plan(plan)
+        : manager(sitesManager), localsitename(localsitename), plan(plan)
     {
-        
     }
     std::string SelectExecutor::execute()
     {
@@ -78,11 +105,11 @@ namespace server
             //     exit(0);
             // }
 
-            //create thread to run function manager.send_site_message("site_execute", site_name, msg);
+            // create thread to run function manager.send_site_message("site_execute", site_name, msg);
             std::thread t(&SitesManager::send_site_message, &manager, "site_execute", site_name, msg);
             t.detach();
         } // 发送所有的plan到所有的site，并直接返回ok
-        //now mtx is locked,wating for it to be unlocked
+        // now mtx is locked,wating for it to be unlocked
         std::string result = get_result();
         etcd_set("result", "");
         etcd_set("node_num", "0");
@@ -135,8 +162,7 @@ namespace server
     {
 
         clock_t start = clock();
-        //create a semaphore to wait for all site finish
-
+        // create a semaphore to wait for all site finish
 
         while (etcd_get("is_finished") != "1")
         {
@@ -284,21 +310,14 @@ namespace server
         AugmentedPlan plan;
         // get the total num of query_tree.tr
         plan.node_num = query_tree.tr.size();
-        map<int, std::string> name_map;
-        vector<int> already_built;
-        while (already_built.size() < plan.node_num)
+        for(int i =0; i<plan.node_num; i++)
         {
-            vector<int> node_to_execute = find_node_to_build(already_built, query_tree);
-            for (int i = 0; i < node_to_execute.size(); i++)
-            {
-                // build a node
-                AugPlanNode node= transfer_to_AugNode(query_tree, node_to_execute[i], plan);
-                plan.augplannodes.push_back(node);
-                already_built.push_back(node_to_execute[i]);
-            }
+            plan.augplannodes.push_back(transfer_to_AugNode(query_tree, i, plan));
         }
         return plan;
+
     }
+    
     std::vector<int> find_node_to_build(std::vector<int> &already_built, db::opt::Tree query_tree)
     {
         std::vector<int> node_to_build;
@@ -324,8 +343,8 @@ namespace server
         AugPlanNode node;
         node.node_id = i;
         node.parent_id = query_tree.tr[i].parent;
-        node.is_finished = 0;
         node.execute_site = "ddb" + std::to_string(query_tree.tr[i].site);
+        
         vector<std::string> projection_attr;
         vector<std::string> selection_attr;
         std::string select_what;
@@ -355,7 +374,7 @@ namespace server
             } // if projection is empty
 
             if (query_tree.tr[i].select.size())
-            {   
+            {
                 for (int j = 0; j < query_tree.tr[i].select.size(); j++)
                 {
                     selection_attr.push_back(query_tree.tr[i].select[j].getStr());
@@ -470,14 +489,16 @@ namespace server
         }
         return node;
     }
-    std::string deal_with_order(const std::string &msg,SitesManager &sitesManager, string localsitename){
-        AugmentedPlan plan=get_plan_from_etcd();
-        SelectExecutor selectexecutor=SelectExecutor(sitesManager,localsitename,plan);
+    std::string deal_with_order(const std::string &msg, SitesManager &sitesManager, string localsitename)
+    {
+        AugmentedPlan plan = get_plan_from_etcd();
+        SelectExecutor selectexecutor = SelectExecutor(sitesManager, localsitename, plan);
         return selectexecutor.site_execute(msg);
     }
-    std::string deal_with_data(const std::string &msg,SitesManager &sitesManager, string localsitename){
-        AugmentedPlan plan=get_plan_from_etcd();
-        SelectExecutor selectexecutor=SelectExecutor(sitesManager,localsitename,plan);
+    std::string deal_with_data(const std::string &msg, SitesManager &sitesManager, string localsitename)
+    {
+        AugmentedPlan plan = get_plan_from_etcd();
+        SelectExecutor selectexecutor = SelectExecutor(sitesManager, localsitename, plan);
         return selectexecutor.data_receive(msg);
     }
 

@@ -50,7 +50,6 @@ namespace db::opt
 		vector<string> attr, projection;
 		vector<Condition> select;
 	};
-
 	class Tree
 	{
 	public:

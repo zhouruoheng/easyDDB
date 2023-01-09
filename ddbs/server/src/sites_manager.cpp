@@ -99,27 +99,6 @@ namespace server
         stub.ServerMsg(cntl, &request, response, done);
         return cid;
     }
-    void SitesManager::onMsgResponse(brpc::Controller* cntl, db::ServerResponse* response){
-        if (!cntl->Failed())
-        {
-            LOG(INFO) << "(success) Received response from " << cntl->remote_side()
-                      << " to " << cntl->local_side()
-                      << ": " << response->msg() << " (attached="
-                      << cntl->response_attachment() << ")"
-                      << " latency=" << cntl->latency_us() << "us" << std::endl;
-            
-        }
-        else
-        {
-            std::stringstream ss;
-            ss << cntl->ErrorText();
-            LOG(ERROR) << ss.str();
-        }
-        delete cntl;
-        delete response;
-    }
-
-
     json SitesManager::sendMsg(std::string siteName, std::string data)
     {
         brpc::Channel *channel = getChannel(siteName);

@@ -18,7 +18,13 @@ namespace server
         int parent_id; //-1表示是根节点
         std::string execute_site;
         std::string sql;
-        std::string save_sql;
+        std::vector<columnzy> columns;
+    };
+    class columnzy
+    {
+    public:
+        std::string name;
+        std::string type;
     };
 
     class AugmentedPlan
@@ -30,6 +36,7 @@ namespace server
         std::vector<AugPlanNode> augplannodes;
         int find_root_id();
         json to_json();
+        vector<int> get_children_list(int node_id);
     };
     class SelectExecutor
     {
@@ -47,9 +54,6 @@ namespace server
         std::string data_push(int node_id, std::string sql, std::string target_site_name, AugmentedPlan plan, int is_root);
         void delete_data(int node_id);
 
-        
-        
-        
         std::string execute();
         void save_plan_to_etcd(AugmentedPlan plan);
         AugmentedPlan get_plan_from_etcd();
