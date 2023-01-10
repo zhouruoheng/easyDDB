@@ -26,20 +26,24 @@ public:
 
     bool is_finish;
     std::vector<Fragment> results;
-
-    void print();
 };
 
 class FragInsertStat {
 public:
     Table table;
-    std::map<Site, std::vector<json>> fragData;
+    std::map<Site, json> fragData;
 };
 
 class FragCreateStat {
 public:
     Table table;
-    std::vector<ColumnDef> columns;
+    std::map<Site, std::vector<ColumnDef>> columnDefsMap;
+    std::vector<Site> sites;
+};
+
+class FragDeleteStat {
+public:
+    Table table;
     std::vector<Site> sites;
 };
 

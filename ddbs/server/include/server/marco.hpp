@@ -38,6 +38,33 @@ DECLARE_string(load_balancer);
 DECLARE_int32(timeout_ms);
 DECLARE_int32(max_retry);
 
+inline std::string dataType2str(hsql::DataType type) {
+    switch (type)
+    {
+    case hsql::DataType::REAL:
+        return "real";
+        break;
+    case hsql::DataType::INT:
+        return "integer";
+        break;
+    case hsql::DataType::TEXT:
+        return "text";
+        break;
+    default:
+        throw "Value Error";
+    }
+}
+
+inline std::string columnType2str(hsql::DataType type) {
+    if (type == hsql::DataType::INT)
+        return "integer";
+    if (type == hsql::DataType::REAL)
+        return "real";
+    if (type == hsql::DataType::TEXT)
+        return "text";
+    throw "Value Error!";
+};
+
 inline std::string Op2String(hsql::OperatorType op) {
     switch (op)
     {

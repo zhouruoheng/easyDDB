@@ -45,7 +45,8 @@ namespace server
             }
             json json_result = {
                 {"info", "(success)"},
-                {"content", json::array()}};
+                {"content", json::array()},
+                {"size", mysql_num_rows(result)}};
             int nCol = mysql_num_fields(result);
             MYSQL_ROW row;
             std::string query_res;

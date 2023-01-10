@@ -31,6 +31,7 @@ public:
 
     std::string execSql(const std::string &sql);
     std::string execPartition(const std::string &msg);
+    std::string execLoad(const std::string &msg);
     std::string deal_with_msg(const std::string msg_type, const std::string &msg);
     const brpc::CallId sendMsgAsync(std::string siteName, std::string data);
     void onMsgResponse(brpc::Controller* cntl, db::ServerResponse* response);

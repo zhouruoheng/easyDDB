@@ -184,22 +184,12 @@ string etcd_opt(string data,string op)
 
 void putTables()
 {
-	etcd_opt(string2json("/table","Publisher,customer,book,order"), "PUT");
-	etcd_opt(string2json("/table/Publisher/attr","Publisher.id,Publisher.name,Publisher.nation"), "PUT");
-	etcd_opt(string2json("/table/Publisher/attr/Publisher.id","int"), "PUT");
-	etcd_opt(string2json("/table/Publisher/attr/Publisher.name","string"), "PUT");
-	etcd_opt(string2json("/table/Publisher/attr/Publisher.nation","string"), "PUT");
-	etcd_opt(string2json("/table/Publisher/key","Publisher.id"), "PUT");
-	etcd_opt(string2json("/table/Publisher/schema","hf"), "PUT");
-	etcd_opt(string2json("/table/Publisher/fragment_num","4"), "PUT");
-	etcd_opt(string2json("/table/Publisher/fragment/1/pos","1"), "PUT");
-	etcd_opt(string2json("/table/Publisher/fragment/2/pos","2"), "PUT");
-	etcd_opt(string2json("/table/Publisher/fragment/3/pos","3"), "PUT");
-	etcd_opt(string2json("/table/Publisher/fragment/4/pos","4"), "PUT");
-	etcd_opt(string2json("/table/Publisher/fragment/1/conditions","Publisher.id<104000,Publisher.nation=PRC"), "PUT");
-	etcd_opt(string2json("/table/Publisher/fragment/2/conditions","Publisher.id<104000,Publisher.nation=USA"), "PUT");
-	etcd_opt(string2json("/table/Publisher/fragment/3/conditions","Publisher.id>=104000,Publisher.nation=PRC"), "PUT");
-	etcd_opt(string2json("/table/Publisher/fragment/4/conditions","Publisher.id>=104000,Publisher.nation=USA"), "PUT");
+    ifstream f;
+	f.open("res/metadata.txt");
+	string key,value;
+	while(f>>key>>value)
+		etcd_opt(string2json(key,value),"PUT");
+	f.close();
 }
 
 void etcd_set(string key,string value)
@@ -226,7 +216,8 @@ vector<metadataTable> getTables()
         for (int i=1;i<=fragNum;i++){
             string url = "/table/"+x+"/fragment/"+to_string(i)+"/";
             int pos = atoi(json2string(etcd_opt(string2json(url+"pos",""), "GET")).c_str());
-            Fragment fr = Fragment(make_pair(x,1), pos, type);
+			int size = atoi(json2string(etcd_opt(string2json(url+"size",""), "GET")).c_str());
+            Fragment fr = Fragment(make_pair(x,1), pos, type, size);
             if (type=="hf") {
                 vector<string> cons = string2list(json2string(etcd_opt(string2json(url+"conditions",""), "GET")));
                 for (auto con : cons) fr.hf_condition.push_back(Condition(con));

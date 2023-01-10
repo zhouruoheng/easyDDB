@@ -46,23 +46,39 @@ using Site  = std::string;
 struct ColumnDef {
     std::string name;
     hsql::DataType columnType;
+
+    ColumnDef() : name(), columnType(hsql::DataType::UNKNOWN) {}
+    ColumnDef(const std::string a, hsql::DataType b) 
+        : name(a), columnType(b) {}
 };
 
 struct Condition {
     hsql::OperatorType op;
     json value;
+
+    Condition() : op(hsql::OperatorType::kOpNone), value() {}
+    Condition(hsql::OperatorType a, const json &b)
+        : op(a), value(b) {}
 };
 
 struct ColumnCondition {
     Column column;
     hsql::OperatorType op;
     json value;
+
+    ColumnCondition() : column(), op(hsql::OperatorType::kOpNone), value() {}
+    ColumnCondition(const Column &a, hsql::OperatorType b, const json &c)
+        : column(a), op(b), value(c) {}
 };
 
 struct FieldCondition {
     Field field;
     hsql::OperatorType op;
     json value;
+
+    FieldCondition() : field(), op(hsql::OperatorType::kOpNone), value() {}
+    FieldCondition(const Field &a, hsql::OperatorType b, const json &c)
+        : field(a), op(b), value(c) {}
 };
 
 struct Join {
@@ -86,7 +102,7 @@ inline bool operator <(const Fragment &a, const Fragment &b) {
     return std::make_pair(a.table, a.site) < std::make_pair(b.table, b.site);
 }
 
-inline std::string parseOp(hsql::OperatorType opType) {
+inline std::string op2str(hsql::OperatorType opType) {
     switch (opType)
     {
     case hsql::kOpEquals:
@@ -113,7 +129,7 @@ inline std::string parseOp(hsql::OperatorType opType) {
     }
 };
 
-inline json parseLiteralVal(hsql::Expr* expr) {
+inline json expr2value(hsql::Expr* expr) {
     json val;
     switch (expr->type)
     {
@@ -133,7 +149,7 @@ inline json parseLiteralVal(hsql::Expr* expr) {
     return val;
 };
 
-inline hsql::OperatorType parseOpInverse(std::string op) {
+inline hsql::OperatorType str2opType(std::string op) {
     // std::cout << "op: " << op << std::endl;
     if (op == "=")
         return hsql::kOpEquals;
@@ -150,7 +166,7 @@ inline hsql::OperatorType parseOpInverse(std::string op) {
     throw "Value Error!";
 };
 
-inline hsql::DataType parseColumnTypeInverse(std::string type) {
+inline hsql::DataType str2columnType(std::string type) {
     if (type == "integer")
         return hsql::DataType::INT;
     if (type == "real")
@@ -159,6 +175,16 @@ inline hsql::DataType parseColumnTypeInverse(std::string type) {
         return hsql::DataType::TEXT;
     throw "Value Error!";
 };
+
+inline std::string value2str(json value) {
+    // std::cout << "value= " << value.dump() << std::endl;
+    if (value.is_number_float())
+        return std::to_string(value.get<float>());
+    else if (value.is_number_integer())
+        return std::to_string(value.get<int>());
+    else
+        return "'" + value.get<std::string>() + "'";
+}
 
 template<typename T> bool CompareFn(hsql::OperatorType op, T a, T b) {
     switch (op)

@@ -17,7 +17,7 @@ DEFINE_string(protocol, "baidu_std", "Protocol type. Defined in src/brpc/options
 DEFINE_string(connection_type, "", "Connection type. Available values: single, pooled, short");
 DEFINE_string(server, "localhost:1231", "IP Address of server");
 DEFINE_string(load_balancer, "", "The algorithm for load balancing");
-DEFINE_int32(timeout_ms, 10000, "RPC timeout in milliseconds");
+DEFINE_int32(timeout_ms, 200000, "RPC timeout in milliseconds");
 DEFINE_int32(max_retry, 3, "Max retries(not including the first RPC)");
 
 void test_fn(const std::string &query) {

@@ -70,6 +70,7 @@ namespace server
         {
             LOG(ERROR) << cntl.ErrorText() << std::endl;
         }
+        delete args;
         return nullptr;
     }
     // void ServiceImpl::sendAsyMsg(void* data)
@@ -267,6 +268,7 @@ namespace server
                     sql += "select " + select_what + " from " + from_what;
                     for (auto &col : query_tree.tr[i].attr)
                     {
+                        col=col.replace(col.find("."),1,"_");
                         columnzy column(col, columnname_to_type(col));
                         node.columns.push_back(column);
                     }
@@ -301,7 +303,7 @@ namespace server
                 }
                 select_what = select_what.substr(0, select_what.size() - 1);
             }
-            from_what = "Node" + std::to_string(query_tree.tr[i].child[0]) + "inner join Node" + std::to_string(query_tree.tr[i].child[1]);
+            from_what = "Node" + std::to_string(query_tree.tr[i].child[0]) + " inner join Node" + std::to_string(query_tree.tr[i].child[1]);
             where_what = "Node" + std::to_string(query_tree.tr[i].child[0]) + "." + query_tree.tr[i].join.ltab + "_" + query_tree.tr[i].join.lcol + "=Node" + std::to_string(query_tree.tr[i].child[1]) + "." + query_tree.tr[i].join.rtab + "_" + query_tree.tr[i].join.rcol;
             sql = "select " + select_what + " from " + from_what + " on " + where_what;
         }
@@ -310,11 +312,13 @@ namespace server
             sql = "";
         }
         node.sql = sql;
+        std::cout << "sql:" << sql << std::endl;
         std::cout << "finish building node:" << i << std::endl;
         return node;
     }
     std::string ServiceImpl::find_table_name(std::string col, int left, int right, Tree &query_tree)
     {
+        std::cout<<"find"<<col<<std::endl;
         std::vector<string> left_attr;
         std::vector<string> right_attr;
         if (query_tree.tr[left].projection.size() == 0)
@@ -438,7 +442,7 @@ namespace server
     ServiceImpl::ServiceImpl()
         : localSiteName(FLAGS_site_name), sitesManager(), dbManager(FLAGS_site_name), requestID(0)
     {
-        cfg.updateConfig(std::string("res/table_config.json"));
+        cfg.loadConfig(std::string("res/table_config.json"));
     }
 
     void ServiceImpl::ClientMsg(
@@ -511,7 +515,8 @@ namespace server
         uint64_t log_id = cntl->log_id();
         json data = json::parse(request->msg());
         json resp_data = json::object({{"info", "(success)"},
-                                       {"content", json::object()}});
+                                       {"content", json::object()},
+                                       {"size", 0}});
 
         auto replaceFn = [](std::string &str)
         {
@@ -723,6 +728,11 @@ namespace server
             std::string sql = "drop table " + table + ";";
             dbManager.execNotSelectSql(sql, localSiteName);
         }
+        else if (dataType == "delete") {
+            Table table = data["content"]["table"].get<Table>();
+            std::string sql = "delete from " + table + ";";
+            dbManager.execNotSelectSql(sql, localSiteName);
+        }
         else if (dataType == "start_execute")
         {
             std::cout << "execute" << data["content"]["execute_node"].get<int>() << std::endl;
@@ -741,6 +751,8 @@ namespace server
                 std::cout << child << std::endl;
             }
             vector<bthread_t> tids;
+
+            // send start_execute to children
             // for (auto &child : children_list)
             // {
             //     json child_data{
@@ -791,8 +803,8 @@ namespace server
                 // open a bthread
                 bthread_t tid;
                 // Aargs
-                Aargs args(plan.augplannodes[child].execute_site, child_msg, this);
-                std::cout << (bthread_start_background(&tid, NULL, *sendAsyMsg, &args));
+                Aargs* args=new Aargs(plan.augplannodes[child].execute_site, child_msg, this);
+                std::cout << (bthread_start_background(&tid, NULL, *sendAsyMsg, args));
                 cout << "tid:" << tid << endl;
                 tids.push_back(tid);
             }
@@ -831,6 +843,8 @@ namespace server
             }
             
             resp_data["content"] = data;
+            resp_data["size"]=data2["size"];
+            
         }
     END:
         response->set_msg(resp_data.dump());
@@ -876,14 +890,14 @@ namespace server
                 cout << "receive select sql" << endl;
                 std::vector<metadataTable> Tables = db::opt::getMetadata();
                 cout << "get metadata" << endl;
-                // db::opt::Tree optimized_tree = db::opt::SelectProcess(Tables, &result);
+                db::opt::Tree optimized_tree = db::opt::SelectProcess(Tables, &result);
                 // cout << "get optimized tree" << endl;
-                // AugmentedPlan plan = build_augmented_plan(optimized_tree);
+                AugmentedPlan plan = build_augmented_plan(optimized_tree);
                 // read planjson from res/test.json
-                std::ifstream i("res/test.json");
-                json planjson;
-                i >> planjson;
-                AugmentedPlan plan(planjson);
+                // std::ifstream i("res/test.json");
+                // json planjson;
+                // i >> planjson;
+                // AugmentedPlan plan(planjson);
                 cout << "get augmented plan" << endl;
                 int root_id = plan.find_root_id();
                 std::string root_site = plan.augplannodes[root_id].execute_site;
@@ -895,6 +909,7 @@ namespace server
                 cout << "send start_execute" << endl;
                 json response = sitesManager.sendMsg(root_site, data.dump());
                 cout << "get response" << endl;
+                cout <<response["size"]<<endl;
                 return response.dump(); // 此处为brpc同步通信
             }
             // 发送包的定义                    {"type", "site_execute"},
@@ -903,92 +918,122 @@ namespace server
             //           {{"execute_node", std::to_string(root_id)}}}};
             // 数据包的定义
             //  {"column",
-            else if (statement->isType(hsql::kStmtInsert))
-            {
-                const auto *insert = static_cast<const hsql::InsertStatement *>(statement);
-                std::shared_ptr<server::FragInsertStat> fragInsert;
-                try
-                {
-                    fragInsert = InsertStat(insert).buildFragInsertStatment(cfg);
+            else if (statement->isType(hsql::kStmtInsert)) {
+                const auto* insert = static_cast<const hsql::InsertStatement*>(statement);
+                std::shared_ptr<server::FragInsertStat> fragInsert;            
+                try {
+                    fragInsert = InsertStat(insert, cfg).buildFragInsertStatment(cfg);
                 }
-                catch (const char *msg)
-                {
+                catch (const std::string &msg) {
                     return msg;
                 }
-                for (auto &p : fragInsert->fragData)
-                {
+                for (auto &p : fragInsert->fragData) {
                     auto &site = p.first;
                     auto &insertData = p.second;
-                    json data{
+                    json data {
                         {"type", "insert"},
                         {"site", localSiteName},
-                        {"content",
-                         {{"table", fragInsert->table},
-                          {"data", json::array()}}}};
-                    for (auto &row : insertData)
-                        data["content"]["data"].push_back(row);
+                        {
+                            "content",
+                            {
+                                {"table", fragInsert->table},
+                                {"data", insertData}
+                            }
+                        }
+                    };
                     json resp = sitesManager.sendMsg(site, data.dump());
-                    std::string info = resp["info"].get<std::string>();
-                    if (info != "(success)")
-                        return info;
+                    if (resp["err"].get<int>() != 0)
+                        return resp.dump();
                 }
-                return "(success)";
+                return json{{"err", 0}}.dump();
             }
-            else if (statement->isType(hsql::kStmtCreate))
-            {
-                const auto *create = static_cast<const hsql::CreateStatement *>(statement);
+            else if (statement->isType(hsql::kStmtCreate)) {
+                const auto* create = static_cast<const hsql::CreateStatement*>(statement);
                 std::shared_ptr<server::FragCreateStat> fragCreate;
-                try
-                {
-                    fragCreate = CreateStat(create).buildFragCreateStatment(cfg);
+                try {
+                    fragCreate = CreateStat(create, cfg).buildFragCreateStatment(cfg);
                 }
-                catch (const char *msg)
-                {
+                catch (const std::string &msg) {
                     return msg;
                 }
                 // update Config
-                CreateStat createStat(create);
+                CreateStat createStat(create, cfg);
                 json columnDefs;
-                for (auto &cInfo : createStat.columns)
-                {
-                    columnDefs.push_back({{"columnName", cInfo.name},
-                                          {"columnType", ColumnType2String(cInfo.columnType)}});
-                    etcd_set(cInfo.name, ColumnType2String(cInfo.columnType));
+                for (auto &cInfo : createStat.columnDefs) {
+                    columnDefs.push_back({
+                        {"columnName", cInfo.name},
+                        {"columnType", columnType2str(cInfo.columnType)}
+                    });
                 }
                 json updateConfig{
                     {"type", "updateConfig"},
                     {"site", localSiteName},
-                    {"content",
-                     {{"tableInfo",
-                       {{createStat.table, columnDefs}}}}}};
+                    {
+                        "content",
+                        {
+                            {
+                                "tableInfo",
+                                {
+                                    {createStat.table, columnDefs}
+                                }
+                            }
+                        }
+                    }
+                };
                 json resp = sitesManager.broadcastMsg(updateConfig.dump());
-                std::string info = resp["info"].get<std::string>();
-                if (info != "(success)")
-                    return info;
+                if (resp["err"].get<int>() != 0)
+                    return resp.dump();
 
                 // send create table
-                for (auto &site : fragCreate->sites)
-                {
-                    json data{
+                for (auto &site : fragCreate->sites) {
+                    json data {
                         {"type", "create"},
                         {"site", localSiteName},
-                        {"content",
-                         {
-                             {"table", fragCreate->table},
-                             {"columns", json::array()} // {name, type}
-                         }}};
-                    for (auto &col : fragCreate->columns)
-                        data["content"]["columns"].push_back({{"name", col.name},
-                                                              {"type", col.columnType}});
+                        {
+                            "content",
+                            {
+                                {"table", fragCreate->table},
+                                {"columns", json::array()}  // {name, type}
+                            }
+                        }
+                    };
+                    for (auto &def : fragCreate->columnDefsMap[site])
+                        data["content"]["columns"].push_back({
+                            {"name", def.name},
+                            {"type", def.columnType}
+                        });
                     json resp = sitesManager.sendMsg(site, data.dump());
-                    std::string info = resp["info"].get<std::string>();
-                    if (info != "(success)")
-                        return info;
+                    if (resp["err"].get<int>() != 0)
+                        return resp.dump();
                 }
-                return "(success)";
+                return json{{"err", 0}}.dump();
             }
-            else if (statement->isType(hsql::kStmtDelete))
-            {
+            else if (statement->isType(hsql::kStmtDelete)) {
+                const auto* del = static_cast<const hsql::DeleteStatement*>(statement);
+                std::shared_ptr<server::FragDeleteStat> fragDelete;
+                try {
+                    fragDelete = DeleteStat(del, cfg).buildFragDeleteStatment(cfg);
+                }
+                catch (const std::string &msg) {
+                    return msg;
+                }
+
+                for (auto &site : fragDelete->sites) {
+                    json data {
+                        {"type", "delete"},
+                        {"site", localSiteName},
+                        {
+                            "content",
+                            {
+                                {"table", fragDelete->table}
+                            }
+                        }
+                    };
+                    json resp = sitesManager.sendMsg(site, data.dump());
+                    if (resp["err"].get<int>() != 0)
+                        return resp.dump();
+                }
+                return json{{"err", 0}}.dump();
             }
             else if (statement->isType(hsql::kStmtDrop))
             {
@@ -1142,4 +1187,117 @@ namespace server
             return info;
         return "(success)";
     }
+
+    template<typename T> 
+    T str2T(std::string x) {
+        T v;
+        std::stringstream ss(x);
+        ss >> v;
+        return v;
+    }
+
+
+    std::string ServiceImpl::execLoad(const std::string &msg) {
+        json json_msg = json::parse(msg);
+        std::string table = json_msg["table"].get<std::string>();
+        json &data = json_msg["data"];
+
+        auto fragInsert = std::make_shared<FragInsertStat>();
+        fragInsert->table = table;
+
+        if (!cfg.fragmentInfo.count(table) || !cfg.tableInfo.count(table))
+            return json{{"err", 1}, {"info", "need fragment or table info"}}.dump();
+
+        auto &fInfos = cfg.fragmentInfo.find(table)->second;
+        auto &tInfos = cfg.tableInfo.find(table)->second;
+
+        std::map<Column, int> globalIndexMap;
+        for (size_t i = 0; i < tInfos.size(); i++)
+            globalIndexMap[table + "_" + tInfos[i].name] = i;
+
+        for (auto &f : fInfos) {
+            json collector;
+
+            std::vector<Field> fields;
+            std::vector<hsql::DataType> filedTypes;
+            std::vector<size_t> filedIndexes;
+            if (f.columns[0] == "*") {
+                for (size_t i = 0; i < tInfos.size(); i++) {
+                    std::string field = table + "_" + tInfos[i].name;
+                    fields.push_back(field);
+                    filedTypes.push_back(tInfos[i].columnType);
+                    filedIndexes.push_back(i);
+                }
+            } else {
+                for (auto &col : f.columns) {
+                    std::string field = table + "_" + col;
+                    fields.push_back(field);
+                    filedTypes.push_back(tInfos[globalIndexMap[field]].columnType);
+                    filedIndexes.push_back(globalIndexMap[field]);
+                }
+            }
+
+            std::map<Column, int> indexMap;
+            for (size_t i = 0; i < fields.size(); i++)
+                indexMap[fields[i]] = i;
+
+            for (auto &row : data) {
+                json v_row;
+                for (size_t i : filedIndexes)
+                    v_row.push_back(row[i]);
+
+                bool flag = true;
+                for (size_t i = 0, s = f.conditions.size(); i < s; i++) {
+                    auto &item = f.conditions[i];
+                    std::string field = table + "_" + item.column;
+                    hsql::OperatorType op = item.op;
+                    json value = item.value;
+
+                    size_t index = indexMap[field];
+                    std::string rowValue = v_row[index].get<std::string>();
+                    // std::cout << "rowValue: " << rowValue << " field: " << field << " op: " << op << " value: " << value.dump() << " index: " << index << std::endl;
+                    switch (filedTypes[index])
+                    {
+                    case hsql::DataType::REAL:
+                        flag &= CompareFn<float>(op, str2T<float>(rowValue), value.get<float>());
+                        break;
+                    case hsql::DataType::TEXT:
+                        flag &= CompareFn<std::string>(op, rowValue, value.get<std::string>());
+                        break;
+                    case hsql::DataType::INT:
+                        flag &= CompareFn<int>(op, str2T<int>(rowValue), value.get<int>());
+                        break;
+                    default:
+                        throw "Value Error";
+                    }
+                }
+                if (flag)
+                    collector.push_back(v_row);
+            }
+            std::cout << "collector size: {" << f.site << "," << collector.size() << "}" << std::endl;
+            if (collector.size() > 0)
+                fragInsert->fragData.insert({f.site, collector});
+        }
+
+        for (auto &p : fragInsert->fragData) {
+            auto &site = p.first;
+            auto &insertData = p.second;
+            json data {
+                {"type", "insert"},
+                {"site", localSiteName},
+                {
+                    "content",
+                    {
+                        {"table", fragInsert->table},
+                        {"data", insertData}
+                    }
+                }
+            };
+            json resp = sitesManager.sendMsg(site, data.dump());
+            if (resp["err"].get<int>() != 0)
+                return resp.dump();
+        }
+        return json{{"err", 0}}.dump();
+    }
+
 }

@@ -1,96 +1,253 @@
 {
     "fragmentInfo": {
-        "Publisher": [
+        "Book": [
             {
-                "site": "ddb1",
+                "attr": ["*"],
                 "conditions": [
                     {
                         "column": "id",
-                        "op": "<=",
-                        "value": 10
+                        "op": "<",
+                        "value": 205000
                     }
-                ]
+                ],
+                "site": "site-1"
             },
             {
-                "site": "ddb2",
-                "conditions": [
-                    {
-                        "column": "x",
-                        "op": ">",
-                        "value": 10
-                    },
-                    {
-                        "column": "x",
-                        "op": "<=",
-                        "value": 20
-                    }
-                ]
-            },
-            {
-                "site": "ddb3",
+                "attr": ["*"],
                 "conditions": [
                     {
                         "column": "id",
-                        "op": ">",
-                        "value": 20
+                        "op": ">=",
+                        "value": 205000
                     },
                     {
                         "column": "id",
-                        "op": "<=",
-                        "value": 30
+                        "op": "<",
+                        "value": 210000
                     }
-                ]
+                ],
+                "site": "site-2"
             },
             {
-                "site": "ddb3",
+                "attr": ["*"],
                 "conditions": [
                     {
                         "column": "id",
-                        "op": ">",
-                        "value": 30
-                    },
-                    {
-                        "column": "id",
-                        "op": "<=",
-                        "value": 40
+                        "op": ">=",
+                        "value": 210000
                     }
-                ]
-            },
-            {
-                "site": "ddb4",
-                "conditions": [
-                    {
-                        "column": "id",
-                        "op": ">",
-                        "value": 40
-                    }
-                ]
+                ],
+                "site": "site-3"
             }
         ],
-        "B": [
+        "Customer": [
             {
-                "site": "site-1",
-                "conditions": [
-                    {
-                        "column": "y",
-                        "op": "=",
-                        "value": "Y"
-                    }
-                ]
+                "attr": ["id", "name"],
+                "conditions": [],
+                "site": "site-1"
             },
             {
-                "site": "site-2",
+                "attr": ["id", "rank"],
+                "conditions": [],
+                "site": "site-2"
+            }
+        ],
+        "Orders": [
+            {
+                "attr": ["*"],
                 "conditions": [
                     {
-                        "column": "y",
-                        "op": "!=",
-                        "value": "Y"
+                        "column": "customer_id",
+                        "op": "<",
+                        "value": 307000
+                    },
+                    {
+                        "column": "book_id",
+                        "op": "<",
+                        "value": 215000
                     }
-                ]
+                ],
+                "site": "site-1"
+            },
+            {
+                "attr": ["*"],
+                "conditions": [
+                    {
+                        "column": "customer_id",
+                        "op": "<",
+                        "value": 307000
+                    },
+                    {
+                        "column": "book_id",
+                        "op": ">=",
+                        "value": 215000
+                    }
+                ],
+                "site": "site-2"
+            },
+            {
+                "attr": ["*"],
+                "conditions": [
+                    {
+                        "column": "customer_id",
+                        "op": ">=",
+                        "value": 307000
+                    },
+                    {
+                        "column": "book_id",
+                        "op": "<",
+                        "value": 215000
+                    }
+                ],
+                "site": "site-3"
+            },
+            {
+                "attr": ["*"],
+                "conditions": [
+                    {
+                        "column": "customer_id",
+                        "op": ">=",
+                        "value": 307000
+                    },
+                    {
+                        "column": "book_id",
+                        "op": ">=",
+                        "value": 215000
+                    }
+                ],
+                "site": "site-4"
+            }
+        ],
+        "Publisher": [
+            {
+                "attr": ["*"],
+                "conditions": [
+                    {
+                        "column": "id",
+                        "op": "<",
+                        "value": 104000
+                    },
+                    {
+                        "column": "nation",
+                        "op": "=",
+                        "value": "PRC"
+                    }
+                ],
+                "site": "site-1"
+            },
+            {
+                "attr": ["*"],
+                "conditions": [
+                    {
+                        "column": "id",
+                        "op": "<",
+                        "value": 104000
+                    },
+                    {
+                        "column": "nation",
+                        "op": "=",
+                        "value": "USA"
+                    }
+                ],
+                "site": "site-2"
+            },
+            {
+                "attr": ["*"],
+                "conditions": [
+                    {
+                        "column": "id",
+                        "op": ">=",
+                        "value": 104000
+                    },
+                    {
+                        "column": "nation",
+                        "op": "=",
+                        "value": "PRC"
+                    }
+                ],
+                "site": "site-3"
+            },
+            {
+                "attr": ["*"],
+                "conditions": [
+                    {
+                        "column": "id",
+                        "op": ">=",
+                        "value": 104000
+                    },
+                    {
+                        "column": "nation",
+                        "op": "=",
+                        "value": "USA"
+                    }
+                ],
+                "site": "site-4"
             }
         ]
     },
+    "keyInfo": {
+        "Book": "id",
+        "Customer": "id",
+        "Orders": "",
+        "Publisher": "id"
+    },
+    "schemaInfo": {
+        "Book": "hf",
+        "Customer": "vf",
+        "Orders": "hf",
+        "Publisher": "hf"
+    },
     "tableInfo": {
+        "Book": [
+            {
+                "columnName": "id",
+                "columnType": "integer"
+            },
+            {
+                "columnName": "title",
+                "columnType": "text"
+            },
+            {
+                "columnName": "author",
+                "columnType": "text"
+            },
+            {
+                "columnName": "publisher_id",
+                "columnType": "integer"
+            },
+            {
+                "columnName": "copies",
+                "columnType": "integer"
+            }
+        ],
+        "Customer": [
+            {
+                "columnName": "id",
+                "columnType": "integer"
+            },
+            {
+                "columnName": "name",
+                "columnType": "text"
+            },
+            {
+                "columnName": "rank",
+                "columnType": "integer"
+            }
+        ],
+        "Orders": [
+            {
+                "columnName": "customer_id",
+                "columnType": "integer"
+            },
+            {
+                "columnName": "book_id",
+                "columnType": "integer"
+            },
+            {
+                "columnName": "quantity",
+                "columnType": "integer"
+            }
+        ],
         "Publisher": [
             {
                 "columnName": "id",
@@ -102,16 +259,6 @@
             },
             {
                 "columnName": "nation",
-                "columnType": "text"
-            }
-        ],
-        "B": [
-            {
-                "columnName": "x",
-                "columnType": "integer"
-            },
-            {
-                "columnName": "y",
                 "columnType": "text"
             }
         ]
