@@ -36,13 +36,14 @@ public:
     void onMsgResponse(brpc::Controller* cntl, db::ServerResponse* response);
     std::string columnname_to_type(std::string name);
     AugmentedPlan build_augmented_plan(db::opt::Tree query_tree);
-    AugPlanNode transfer_to_AugNode(db::opt::Tree query_tree, int i, AugmentedPlan &plan);
+    AugPlanNode transfer_to_AugNode(db::opt::Tree &query_tree, int i, AugmentedPlan &plan);
     
     Config cfg;
     std::string localSiteName;
     SitesManager sitesManager;
     DbManager dbManager;
     uint64_t requestID;
+    std::string find_table_name(std::string col, int left, int right, Tree &query_tree);
 };
 void* sendAsyMsg(void *args);
 struct Aargs{

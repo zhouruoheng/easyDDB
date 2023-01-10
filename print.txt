@@ -1,0 +1,5 @@
+0|Fragment Publisher1	|1|
+1|Fragment Publisher2	|2|
+2|Fragment Publisher3	|3|
+3|Fragment Publisher4	|4|
+4|Union	|1|0,1,2,3

@@ -1,13 +1,15 @@
 #include <server/service.hpp>
 
 namespace server
-{   
-    void* sendAsyMsg(void *args)
+{
+    void *sendAsyMsg(void *args)
     {
-        Aargs *p = (Aargs*)args;
-        std::string sitename=p->siteName;
-        std::string msg=p->msg;
-        ServiceImpl* service=p->service;
+        Aargs *p = (Aargs *)args;
+        std::string sitename = p->siteName;
+        std::string msg = p->msg;
+        std::cout << sitename << std::endl;
+        std::cout << msg << std::endl;
+        ServiceImpl *service = p->service;
         brpc::Channel *channel = service->sitesManager.getChannel(sitename);
         db::Service_Stub stub(channel);
         db::ServerRequest request;
@@ -19,7 +21,6 @@ namespace server
         // Set attachment which is wired to network directly instead of
         // being serialized into protobuf messages.
         cntl.request_attachment().append("attachment");
-
 
         // Because `done'(last parameter) is NULL, this function waits until
         // the response comes back or error occurs(including timedout).
@@ -42,9 +43,8 @@ namespace server
                 typeClause += col["name"].get<std::string>() + " " + Datatype2String((hsql::DataType)col["type"].get<int>());
             }
             std::string sql = "create table " + table + "(" + typeClause + ");";
-            service->dbManager.execNotSelectSql(sql);
-            service->dbManager.execNotSelectSql("insert into " + table + " values " + data["content"]["content"]["data"].get<std::string>() + ";");
-
+            service->dbManager.execNotSelectSql(sql,service->localSiteName);
+            service->dbManager.execNotSelectSql("insert into " + table + " values " + data["content"]["content"]["data"].get<std::string>() + ";",service->localSiteName);
         }
         else
         {
@@ -118,33 +118,43 @@ namespace server
     //     delete &cntl;
     //     delete &response;
     // }
-    
+
     AugmentedPlan ServiceImpl::build_augmented_plan(db::opt::Tree query_tree)
     {
         AugmentedPlan plan;
         // get the total num of query_tree.tr
         plan.node_num = query_tree.tr.size();
-        //build the tree from bottom to top
+        cout << "node_num:" << plan.node_num << endl;
+        // build the tree from bottom to top
         vector<int> has_built;
         for (int i = 0; i < plan.node_num; i++)
         {
             if (query_tree.tr[i].type == "Fragment")
             {
-
                 has_built.push_back(i);
                 plan.augplannodes.push_back(transfer_to_AugNode(query_tree, i, plan));
             }
+            for (auto &has_built_node : has_built)
+            {
+                cout << has_built_node << " ";
+            }
         }
-        while(has_built.size()<query_tree.tr.size()){
+        while (has_built.size() < query_tree.tr.size())
+        {
             for (int i = 0; i < plan.node_num; i++)
             {
-                for(auto &child:query_tree.tr[i].child){
-                    if(find(has_built.begin(),has_built.end(),child)==has_built.end()){
+                for (auto &child : query_tree.tr[i].child)
+                {
+                    if (find(has_built.begin(), has_built.end(), child) == has_built.end())
+                    {
                         break;
                     }
                 }
-                plan.augplannodes.push_back(transfer_to_AugNode(query_tree, i, plan));
-                has_built.push_back(i);
+                if (find(has_built.begin(), has_built.end(), i) == has_built.end())
+                {
+                    plan.augplannodes.push_back(transfer_to_AugNode(query_tree, i, plan));
+                    has_built.push_back(i);
+                }
             }
         }
         // for (int i = 0; i < plan.node_num; i++)
@@ -153,9 +163,11 @@ namespace server
         // }
         return plan;
     }
-    AugPlanNode ServiceImpl::transfer_to_AugNode(db::opt::Tree query_tree, int i, AugmentedPlan &plan)
+    AugPlanNode ServiceImpl::transfer_to_AugNode(db::opt::Tree &query_tree, int i, AugmentedPlan &plan)
     {
+        cout << "start to build node:" << i << endl;
         AugPlanNode node;
+
         node.node_id = i;
         node.parent_id = query_tree.tr[i].parent;
         node.execute_site = "ddb" + std::to_string(query_tree.tr[i].site);
@@ -163,21 +175,27 @@ namespace server
         std::string from_what = "";
         std::string where_what = "";
         std::string sql = "";
+        std::cout << "node type:" << query_tree.tr[i].type << std::endl;
         if (query_tree.tr[i].type == "Fragment")
         {
             if (query_tree.tr[i].projection.size() == 0)
             {
+                std::cout << "select *" << std::endl;
                 for (auto &col : query_tree.tr[i].attr)
                 {
                     // replace . to _
                     col = col.replace(col.find("."), 1, "_");
+                    std::cout << col << "col" << std::endl;
                     select_what += col + ",";
-                    columnzy column;
-                    column.name = col;
-                    column.type = columnname_to_type(col);
+                    columnzy column(col, columnname_to_type(col));
+                    cout << "column name:" << column.name << endl;
+                    cout << "column type:" << column.type << endl;
                     node.columns.push_back(column);
+                    std::cout << "node type:" << query_tree.tr[i].type << std::endl;
+                    std::cout << select_what << std::endl;
                 }
                 select_what = select_what.substr(0, select_what.size() - 1);
+                std::cout << "select_what:" << select_what << std::endl;
             }
             else
             {
@@ -186,27 +204,36 @@ namespace server
                     // replace . to _
                     col = col.replace(col.find("."), 1, "_");
                     select_what += col + ",";
-                    columnzy column;
-                    column.name = col;
-                    column.type = columnname_to_type(col);
+                    columnzy column(col, columnname_to_type(col));
                     node.columns.push_back(column);
                 }
                 select_what = select_what.substr(0, select_what.size() - 1);
             }
             from_what = query_tree.tr[i].fname.first;
+            std::cout << "from_what:" << from_what << std::endl;
             for (auto &onecondition : query_tree.tr[i].select)
             {
-                if (onecondition.type=="string"){
-                    select_what += onecondition.table + "_" + onecondition.attr + onecondition.opt +"\'"+onecondition.sval+"\'";
+                if (onecondition.type == "string")
+                {
+                    where_what += onecondition.table + "_" + onecondition.attr + onecondition.opt + "\'" + onecondition.sval + "\'";
                 }
-                else{
-                    select_what += onecondition.table + "_" + onecondition.attr + onecondition.opt + std::to_string(onecondition.ival);
+                else
+                {
+                    where_what += onecondition.table + "_" + onecondition.attr + onecondition.opt + std::to_string(onecondition.ival);
                 }
-                //if it is not the last one,add and
-                    select_what+=" and ";
+                // if it is not the last one,add and
+                where_what += " and ";
             }
-            select_what = select_what.substr(0, select_what.size() - 5);
-            sql = "select " + select_what + " from " + from_what+" where "+where_what;
+            if (where_what.size() > 5)
+            {
+                where_what = where_what.substr(0, where_what.size() - 5);
+                std::cout << "select_what:" << select_what << std::endl;
+                sql = "select " + select_what + " from " + from_what + " where " + where_what;
+            }
+            else
+            {
+                sql = "select " + select_what + " from " + from_what;
+            }
         }
         else if (query_tree.tr[i].type == "Union")
         {
@@ -222,9 +249,7 @@ namespace server
                     sql += "select " + select_what + " from " + from_what;
                     for (auto &col : query_tree.tr[i].attr)
                     {
-                        columnzy column;
-                        column.name = col;
-                        column.type = columnname_to_type(col);
+                        columnzy column(col, columnname_to_type(col));
                         node.columns.push_back(column);
                     }
                 }
@@ -232,28 +257,100 @@ namespace server
         }
         else if (query_tree.tr[i].type == "Join")
         {
-            
+            if (query_tree.tr[i].projection.size() == 0)
+            {
+                for (auto &col : query_tree.tr[i].attr)
+                {
+                    // replace . to _
+                    col = col.replace(col.find("."), 1, "_");
+                    columnzy column(col, columnname_to_type(col));
+                    node.columns.push_back(column);
+                    col = col.replace(col.find("_"), 1, ".");
+                    select_what += find_table_name(col, query_tree.tr[i].child[0], query_tree.tr[i].child[1], query_tree) + "." + col.replace(col.find("."), 1, "_") + ",";
+                }
+                select_what = select_what.substr(0, select_what.size() - 1);
+            }
+            else
+            {
+                for (auto &col : query_tree.tr[i].projection)
+                {
+                    // replace . to _
+                    col = col.replace(col.find("."), 1, "_");
+                    columnzy column(col, columnname_to_type(col));
+                    node.columns.push_back(column);
+                    col = col.replace(col.find("_"), 1, ".");
+                    select_what += find_table_name(col, query_tree.tr[i].child[0], query_tree.tr[i].child[1], query_tree) + "." + col.replace(col.find("."), 1, "_") + ",";
+                }
+                select_what = select_what.substr(0, select_what.size() - 1);
+            }
+            from_what = "Node" + std::to_string(query_tree.tr[i].child[0]) + "inner join Node" + std::to_string(query_tree.tr[i].child[1]);
+            where_what = "Node" + std::to_string(query_tree.tr[i].child[0]) + "." + query_tree.tr[i].join.ltab + "_" + query_tree.tr[i].join.lcol + "=Node" + std::to_string(query_tree.tr[i].child[1]) + "." + query_tree.tr[i].join.rtab + "_" + query_tree.tr[i].join.rcol;
+            sql = "select " + select_what + " from " + from_what + " on " + where_what;
         }
         else
         {
             sql = "";
         }
         node.sql = sql;
+        std::cout << "finish building node:" << i << std::endl;
         return node;
+    }
+    std::string ServiceImpl::find_table_name(std::string col, int left, int right, Tree &query_tree)
+    {
+        std::vector<string> left_attr;
+        std::vector<string> right_attr;
+        if (query_tree.tr[left].projection.size() == 0)
+        {
+            left_attr = query_tree.tr[left].attr;
+        }
+        else
+        {
+            left_attr = query_tree.tr[left].projection;
+        }
+        if (query_tree.tr[right].projection.size() == 0)
+        {
+            right_attr = query_tree.tr[right].attr;
+        }
+        else
+        {
+            right_attr = query_tree.tr[right].projection;
+        }
+        for (auto &left_col : left_attr)
+        {
+            if (left_col == col)
+            {
+                return "Node" + std::to_string(left);
+            }
+        }
+        for (auto &right_col : right_attr)
+        {
+            if (right_col == col)
+            {
+                return "Node" + std::to_string(right);
+            }
+        }
+        // error
+        std::cout << "error : cannot find table name" << col << endl;
+        return "";
     }
     std::string ServiceImpl::columnname_to_type(std::string name)
     {
         // split name to tablename and columnname
         std::string tablename = name.substr(0, name.find("_"));
         std::string columnname = name.substr(name.find("_") + 1);
-        vector<ColumnDef> types = cfg.tableInfo.find(tablename)->second;
+        std::cout << "tablename:" << tablename << std::endl;
+        std::cout << "columnname:" << columnname << std::endl;
+        vector<ColumnDef> types = cfg.tableInfo[tablename];
         for (auto &type : types)
         {
+            std::cout << type.name << std::endl;
             if (type.name == columnname)
             {
+                std::cout << Datatype2String(type.columnType) << std::endl;
                 return Datatype2String(type.columnType);
             }
         }
+        return "";
     }
     // const brpc::CallId ServiceImpl::sendMsgAsync(std::string siteName, std::string data)
     // {
@@ -447,8 +544,8 @@ namespace server
             std::string drop_sql = "drop table if exists " + newTable + ";";
             std::string selectStat = "select " + selectList + " from " + table + " " + whereClause;
             std::string sql = "create table " + newTable + " as " + selectStat + ";";
-            dbManager.execNotSelectSql(drop_sql);
-            dbManager.execNotSelectSql(sql);
+            dbManager.execNotSelectSql(drop_sql,localSiteName);
+            dbManager.execNotSelectSql(sql,localSiteName);
             resp_data["content"] = json::object({{"table", newTable},
                                                  {"site", localSiteName}});
         }
@@ -499,8 +596,8 @@ namespace server
                 }
                 std::string drop_sql = "drop table if exists " + joinTable + ";";
                 std::string sql = "create table " + joinTable + "(" + typeClause + ");";
-                dbManager.execNotSelectSql(drop_sql);
-                dbManager.execNotSelectSql(sql);
+                dbManager.execNotSelectSql(drop_sql,localSiteName);
+                dbManager.execNotSelectSql(sql,localSiteName);
             }
 
             { // insert data
@@ -519,7 +616,7 @@ namespace server
                     valueClause += "(" + rowClause + ")";
                 }
                 std::string sql = "insert into " + joinTable + " values " + valueClause + ";";
-                dbManager.execNotSelectSql(sql);
+                dbManager.execNotSelectSql(sql,localSiteName);
             }
 
             { // join
@@ -538,13 +635,13 @@ namespace server
                 std::string drop_sql = "drop table if exists " + newTable + ";";
                 std::string selectStat = " select * from " + leftTable + "," + rightTable + whereClause;
                 std::string sql = "create table " + newTable + " as " + selectStat + ";";
-                dbManager.execNotSelectSql(drop_sql);
-                dbManager.execNotSelectSql(sql);
+                dbManager.execNotSelectSql(drop_sql,localSiteName);
+                dbManager.execNotSelectSql(sql,localSiteName);
             }
 
             { // delete tmp join table
                 std::string sql = "drop table " + joinTable + ";";
-                dbManager.execNotSelectSql(sql);
+                dbManager.execNotSelectSql(sql,localSiteName);
             }
             resp_data["content"] = json::object({{"table", newTable},
                                                  {"site", localSiteName}});
@@ -566,7 +663,7 @@ namespace server
                 }
             }
             std::string sql = "select " + selectList + " from " + table + ";";
-            json sResult = dbManager.execSelectSql(sql, table);
+            json sResult = dbManager.execSelectSql(sql, table,localSiteName);
             resp_data["content"] = sResult;
         }
         else if (dataType == "insert")
@@ -587,7 +684,7 @@ namespace server
                 valueClause += "(" + rowClause + ")";
             }
             std::string sql = "insert into " + table + " values " + valueClause + ";";
-            dbManager.execNotSelectSql(sql);
+            dbManager.execNotSelectSql(sql,localSiteName);
         }
         else if (dataType == "create")
         {
@@ -600,19 +697,31 @@ namespace server
                 typeClause += col["name"].get<std::string>() + " " + Datatype2String((hsql::DataType)col["type"].get<int>());
             }
             std::string sql = "create table " + table + "(" + typeClause + ");";
-            dbManager.execNotSelectSql(sql);
+            dbManager.execNotSelectSql(sql,localSiteName);
         }
         else if (dataType == "drop")
         {
             Table table = data["content"]["table"].get<Table>();
             std::string sql = "drop table " + table + ";";
-            dbManager.execNotSelectSql(sql);
+            dbManager.execNotSelectSql(sql,localSiteName);
         }
         else if (dataType == "start_execute")
         {
+            std::cout << "execute" << data["content"]["execute_node"].get<int>() << std::endl;
             int execute_node = data["content"]["execute_node"].get<int>();
-            AugmentedPlan plan = AugmentedPlan((data["content"]["plan"].get<json>()));
+            AugmentedPlan plan = AugmentedPlan(data["content"]["plan"].get<json>());
+            std::cout << "plan received" << std::endl;
+            for (auto &node : plan.augplannodes)
+            {
+                std::cout << node.node_id << std::endl;
+            }
+            std::cout << "all node printed" << std::endl;
             vector<int> children_list = plan.get_children_list(execute_node);
+            // print children_list
+            for (auto &child : children_list)
+            {
+                std::cout << child << std::endl;
+            }
             vector<bthread_t> tids;
             // for (auto &child : children_list)
             // {
@@ -624,14 +733,19 @@ namespace server
             //     std::string child_msg = child_data.dump();
             //     cids.push_back(sendMsgAsync(plan.augplannodes[child].execute_site, child_msg));
             // }
+            // rank the children list
             for (auto &child : children_list)
             {
+                if(child==0){continue;}
+                if(child==2){continue;}
+                if(child==3){continue;}
                 json child_data{
                     {"type", "start_execute"},
                     {"site", localSiteName},
                     {"content",
-                     {{"execute_node", std::to_string(child)}, {"plan", plan.to_json()}}}};
+                     {{"execute_node", child}, {"plan", plan.to_json()}}}};
                 std::string child_msg = child_data.dump();
+                std::cout << child_msg << std::endl;
                 // json data = sitesManager.sendMsg(plan.augplannodes[child].execute_site, child_msg);
                 // Table table = data["content"]["content"]["table"].get<Table>();
                 // std::string typeClause = "";
@@ -659,16 +773,18 @@ namespace server
                 // }
                 // sql = "insert into " + table + " values " + valueClause + ";";
                 // dbManager.execNotSelectSql(sql);
-                //open a bthread
+                // open a bthread
                 bthread_t tid;
-                //Aargs
-                Aargs args(plan.augplannodes[child].execute_site, child_msg,this);
-                bthread_start_background(&tid, NULL, *sendAsyMsg, &args);
+                // Aargs
+                Aargs args(plan.augplannodes[child].execute_site, child_msg, this);
+                std::cout << (bthread_start_background(&tid, NULL, *sendAsyMsg, &args));
+                cout << "tid:" << tid << endl;
                 tids.push_back(tid);
             }
             for (auto &tid : tids)
             {
                 bthread_join(tid, NULL);
+                std::cout << "join" << tid << std::endl;
             }
             json data{
                 {"table", "Node" + std::to_string(execute_node)},
@@ -680,12 +796,12 @@ namespace server
                                            {"type", col.type}});
             std::string sql = plan.augplannodes[execute_node].sql;
             Table table = "Node" + std::to_string(execute_node);
-            json data2 = dbManager.execSelectSql(sql, table);
+            json data2 = dbManager.execSelectSql(sql, table,localSiteName);
             data["data"] = data2["content"];
             for (auto &child : children_list)
             {
                 std::string sql = "drop table Node" + std::to_string(child) + ";";
-                dbManager.execNotSelectSql(sql);
+                dbManager.execNotSelectSql(sql,localSiteName);
             }
             resp_data["content"] = data;
         }
@@ -730,17 +846,23 @@ namespace server
 
             if (statement->isType(hsql::kStmtSelect))
             {
-                vector<metadataTable> Tables = db::opt::getMetadata();
+                cout << "receive select sql" << endl;
+                std::vector<metadataTable> Tables = db::opt::getMetadata();
+                cout << "get metadata" << endl;
                 db::opt::Tree optimized_tree = db::opt::SelectProcess(Tables, &result);
+                cout << "get optimized tree" << endl;
                 AugmentedPlan plan = build_augmented_plan(optimized_tree);
+                cout << "get augmented plan" << endl;
                 int root_id = plan.find_root_id();
                 std::string root_site = plan.augplannodes[root_id].execute_site;
                 json data{
                     {"type", "start_execute"},
                     {"site", localSiteName},
                     {"content",
-                     {{"execute_node", std::to_string(root_id)}, {"plan", plan.to_json()}}}};
+                     {{"execute_node", root_id}, {"plan", plan.to_json()}}}};
+                cout << "send start_execute" << endl;
                 json response = sitesManager.sendMsg(root_site, data.dump());
+                cout << "get response" << endl;
                 return response.dump(); // 此处为brpc同步通信
             }
             // 发送包的定义                    {"type", "site_execute"},

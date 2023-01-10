@@ -79,12 +79,15 @@ inline std::string Datatype2String(hsql::DataType type) {
     switch (type)
     {
     case hsql::DataType::FLOAT:
+        std::cout<<"float"<<std::endl;
         return "float";
         break;
     case hsql::DataType::INT:
+        std::cout<<"int"<<std::endl;
         return "integer";
         break;
     case hsql::DataType::TEXT:
+        std::cout<<"text"<<std::endl;
         return "text";
         break;
     default:

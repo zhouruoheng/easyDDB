@@ -1,4 +1,18 @@
 [
-    {"addr": "localhost:1231", "site-name": "site-1"},
-    {"addr": "localhost:1232", "site-name": "site-2"}
+    {
+        "addr": "localhost:1231",
+        "site-name": "ddb1"
+    },
+    {
+        "addr": "localhost:1232",
+        "site-name": "ddb2"
+    },
+    {
+        "addr": "52.151.249.158:1231",
+        "site-name": "ddb3"
+    },
+    {
+        "addr": "172.174.53.163:1231",
+        "site-name": "ddb4"
+    }
 ]

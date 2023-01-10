@@ -11,9 +11,10 @@
 namespace server
 {
     using db::opt::Tree;
-        class columnzy
+    class columnzy
     {
     public:
+        columnzy(std::string _name, std::string _type) : name(_name), type(_type) {}
         std::string name;
         std::string type;
     };

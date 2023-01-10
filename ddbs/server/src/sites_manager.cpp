@@ -112,7 +112,7 @@ namespace server
         // Set attachment which is wired to network directly instead of
         // being serialized into protobuf messages.
         cntl.request_attachment().append("attachment");
-
+        std::cout<<"message sent to "<<siteName<<std::endl;
         // Because `done'(last parameter) is NULL, this function waits until
         // the response comes back or error occurs(including timedout).
         stub.ServerMsg(&cntl, &request, &response, NULL);

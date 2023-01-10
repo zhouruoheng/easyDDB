@@ -1,23 +1,68 @@
 {
     "fragmentInfo": {
-        "A": [
+        "Publisher": [
             {
-                "site": "site-1",
+                "site": "ddb1",
                 "conditions": [
                     {
-                        "column": "x",
+                        "column": "id",
                         "op": "<=",
                         "value": 10
                     }
                 ]
             },
             {
-                "site": "site-2",
+                "site": "ddb2",
                 "conditions": [
                     {
                         "column": "x",
                         "op": ">",
                         "value": 10
+                    },
+                    {
+                        "column": "x",
+                        "op": "<=",
+                        "value": 20
+                    }
+                ]
+            },
+            {
+                "site": "ddb3",
+                "conditions": [
+                    {
+                        "column": "id",
+                        "op": ">",
+                        "value": 20
+                    },
+                    {
+                        "column": "id",
+                        "op": "<=",
+                        "value": 30
+                    }
+                ]
+            },
+            {
+                "site": "ddb3",
+                "conditions": [
+                    {
+                        "column": "id",
+                        "op": ">",
+                        "value": 30
+                    },
+                    {
+                        "column": "id",
+                        "op": "<=",
+                        "value": 40
+                    }
+                ]
+            },
+            {
+                "site": "ddb4",
+                "conditions": [
+                    {
+                        "column": "id",
+                        "op": ">",
+                        "value": 40
                     }
                 ]
             }
@@ -46,13 +91,29 @@
         ]
     },
     "tableInfo": {
-        "A": [
-            {"columnName": "x", "columnType": "integer"},
-            {"columnName": "y", "columnType": "text"}
+        "Publisher": [
+            {
+                "columnName": "id",
+                "columnType": "integer"
+            },
+            {
+                "columnName": "name",
+                "columnType": "text"
+            },
+            {
+                "columnName": "nation",
+                "columnType": "text"
+            }
         ],
         "B": [
-            {"columnName": "x", "columnType": "integer"},
-            {"columnName": "y", "columnType": "text"}
+            {
+                "columnName": "x",
+                "columnType": "integer"
+            },
+            {
+                "columnName": "y",
+                "columnType": "text"
+            }
         ]
     }
 }

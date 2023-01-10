@@ -7,14 +7,18 @@ namespace server
 
     vector<int> AugmentedPlan::get_children_list(int node_id)
     {
+        std::cout<<node_id<<std::endl;
         vector<int> children_list;
+        std::cout<<children_list.size()<<std::endl;
         for (int i = 0; i < augplannodes.size(); i++)
         {
+            std::cout<<augplannodes[i].parent_id<<std::endl;
             if (augplannodes[i].parent_id == node_id)
             {
                 children_list.push_back(augplannodes[i].node_id);
             }
         }
+        std::cout<<children_list.size()<<std::endl;
         return children_list;
     }
     json AugmentedPlan::to_json()
@@ -41,21 +45,27 @@ namespace server
     AugmentedPlan::AugmentedPlan(json planjson)
     {
         node_num = planjson["node_num"];
+        cout << node_num << endl;
         for (int i = 0; i < node_num; i++)
         {
             AugPlanNode node;
             node.sql = planjson[std::to_string(i)]["sql"];
+            cout << node.sql << endl;
             node.node_id = i;
+            cout << node.node_id << endl;
             node.parent_id = planjson[std::to_string(i)]["parent_id"];
+            cout << node.parent_id << endl;
             node.execute_site = planjson[std::to_string(i)]["execute_site"];
+            cout << node.execute_site << endl;
             json &columns = planjson[std::to_string(i)]["columns"];
             for (auto column : columns)
             {
-                columnzy col;
-                col.name = column["name"];
-                col.type = column["type"];
+                columnzy col(column["name"], column["type"]);
+                cout << col.name << endl;
+                cout << col.type << endl;
                 node.columns.push_back(col);
             }
+            augplannodes.push_back(node);
         }
     }
 
