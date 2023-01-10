@@ -4,17 +4,19 @@ namespace server
 {
     void *sendAsyMsg(void *args)
     {
+        cout << "sendAsyMsg" << endl;
         Aargs *p = (Aargs *)args;
-        std::string sitename = p->siteName;
         std::string msg = p->msg;
-        std::cout << sitename << std::endl;
+        std::string sitename = p->siteName;
         std::cout << msg << std::endl;
+        std::cout << sitename << std::endl;
         ServiceImpl *service = p->service;
         brpc::Channel *channel = service->sitesManager.getChannel(sitename);
         db::Service_Stub stub(channel);
         db::ServerRequest request;
         db::ServerResponse response;
         brpc::Controller cntl;
+        cout << "sendprepare" << endl;
         request.set_msg(msg);
 
         cntl.set_log_id(service->sitesManager.requestID++); // set by user
@@ -34,24 +36,40 @@ namespace server
                       << cntl.response_attachment() << ")"
                       << " latency=" << cntl.latency_us() << "us" << std::endl;
             json data = json::parse(response.msg());
-            Table table = data["content"]["content"]["table"].get<Table>();
+            std::cout << "data parsed suss" << std::endl;
+            Table table = data["content"]["table"].get<Table>();
+            std::cout << table << std::endl;
             std::string typeClause = "";
             for (auto &col : data["content"]["columns"])
             {
                 if (typeClause.size() > 0)
                     typeClause += " , ";
-                typeClause += col["name"].get<std::string>() + " " + Datatype2String((hsql::DataType)col["type"].get<int>());
+                typeClause += col["name"].get<std::string>() + " " + col["type"].get<std::string>();
             }
             std::string sql = "create table " + table + "(" + typeClause + ");";
-            service->dbManager.execNotSelectSql(sql,service->localSiteName);
-            service->dbManager.execNotSelectSql("insert into " + table + " values " + data["content"]["content"]["data"].get<std::string>() + ";",service->localSiteName);
+            std::cout << sql << std::endl;
+            service->dbManager.execNotSelectSql(sql, service->localSiteName);
+            std::string valueClause = "";
+            for (auto &row : data["content"]["data"])
+            {
+                std::string rowClause = "";
+                for (auto &item : row)
+                {
+                    if (rowClause.size() > 0)
+                        rowClause += ",";
+                    rowClause += Value2String(item);
+                }
+                if (valueClause.size() > 0)
+                    valueClause += ",";
+                valueClause += "(" + rowClause + ")";
+            }
+            sql = "insert into " + table + " values " + valueClause + ";";
+            service->dbManager.execNotSelectSql(sql, service->localSiteName);
         }
         else
         {
             LOG(ERROR) << cntl.ErrorText() << std::endl;
         }
-        delete &cntl;
-        delete &response;
         return nullptr;
     }
     // void ServiceImpl::sendAsyMsg(void* data)
@@ -544,8 +562,8 @@ namespace server
             std::string drop_sql = "drop table if exists " + newTable + ";";
             std::string selectStat = "select " + selectList + " from " + table + " " + whereClause;
             std::string sql = "create table " + newTable + " as " + selectStat + ";";
-            dbManager.execNotSelectSql(drop_sql,localSiteName);
-            dbManager.execNotSelectSql(sql,localSiteName);
+            dbManager.execNotSelectSql(drop_sql, localSiteName);
+            dbManager.execNotSelectSql(sql, localSiteName);
             resp_data["content"] = json::object({{"table", newTable},
                                                  {"site", localSiteName}});
         }
@@ -596,8 +614,8 @@ namespace server
                 }
                 std::string drop_sql = "drop table if exists " + joinTable + ";";
                 std::string sql = "create table " + joinTable + "(" + typeClause + ");";
-                dbManager.execNotSelectSql(drop_sql,localSiteName);
-                dbManager.execNotSelectSql(sql,localSiteName);
+                dbManager.execNotSelectSql(drop_sql, localSiteName);
+                dbManager.execNotSelectSql(sql, localSiteName);
             }
 
             { // insert data
@@ -616,7 +634,7 @@ namespace server
                     valueClause += "(" + rowClause + ")";
                 }
                 std::string sql = "insert into " + joinTable + " values " + valueClause + ";";
-                dbManager.execNotSelectSql(sql,localSiteName);
+                dbManager.execNotSelectSql(sql, localSiteName);
             }
 
             { // join
@@ -635,13 +653,13 @@ namespace server
                 std::string drop_sql = "drop table if exists " + newTable + ";";
                 std::string selectStat = " select * from " + leftTable + "," + rightTable + whereClause;
                 std::string sql = "create table " + newTable + " as " + selectStat + ";";
-                dbManager.execNotSelectSql(drop_sql,localSiteName);
-                dbManager.execNotSelectSql(sql,localSiteName);
+                dbManager.execNotSelectSql(drop_sql, localSiteName);
+                dbManager.execNotSelectSql(sql, localSiteName);
             }
 
             { // delete tmp join table
                 std::string sql = "drop table " + joinTable + ";";
-                dbManager.execNotSelectSql(sql,localSiteName);
+                dbManager.execNotSelectSql(sql, localSiteName);
             }
             resp_data["content"] = json::object({{"table", newTable},
                                                  {"site", localSiteName}});
@@ -663,7 +681,7 @@ namespace server
                 }
             }
             std::string sql = "select " + selectList + " from " + table + ";";
-            json sResult = dbManager.execSelectSql(sql, table,localSiteName);
+            json sResult = dbManager.execSelectSql(sql, table, localSiteName);
             resp_data["content"] = sResult;
         }
         else if (dataType == "insert")
@@ -684,7 +702,7 @@ namespace server
                 valueClause += "(" + rowClause + ")";
             }
             std::string sql = "insert into " + table + " values " + valueClause + ";";
-            dbManager.execNotSelectSql(sql,localSiteName);
+            dbManager.execNotSelectSql(sql, localSiteName);
         }
         else if (dataType == "create")
         {
@@ -697,13 +715,13 @@ namespace server
                 typeClause += col["name"].get<std::string>() + " " + Datatype2String((hsql::DataType)col["type"].get<int>());
             }
             std::string sql = "create table " + table + "(" + typeClause + ");";
-            dbManager.execNotSelectSql(sql,localSiteName);
+            dbManager.execNotSelectSql(sql, localSiteName);
         }
         else if (dataType == "drop")
         {
             Table table = data["content"]["table"].get<Table>();
             std::string sql = "drop table " + table + ";";
-            dbManager.execNotSelectSql(sql,localSiteName);
+            dbManager.execNotSelectSql(sql, localSiteName);
         }
         else if (dataType == "start_execute")
         {
@@ -736,9 +754,6 @@ namespace server
             // rank the children list
             for (auto &child : children_list)
             {
-                if(child==0){continue;}
-                if(child==2){continue;}
-                if(child==3){continue;}
                 json child_data{
                     {"type", "start_execute"},
                     {"site", localSiteName},
@@ -791,18 +806,30 @@ namespace server
                 {"data", json::array()},
                 {"columns", json::array()} // {name, type}
             };
+            vector<int> isint;
             for (auto &col : plan.augplannodes[execute_node].columns)
+            {
                 data["columns"].push_back({{"name", col.name},
                                            {"type", col.type}});
+                if(col.type=="integer"){
+                    isint.push_back(1);
+                }
+                else{
+                    isint.push_back(0);}
+            }
             std::string sql = plan.augplannodes[execute_node].sql;
             Table table = "Node" + std::to_string(execute_node);
-            json data2 = dbManager.execSelectSql(sql, table,localSiteName);
+            for(auto &isinti:isint){
+                std::cout<<isinti<<std::endl;
+            }
+            json data2 = dbManager.execSelectSqlzy(sql, table, localSiteName, isint);
             data["data"] = data2["content"];
             for (auto &child : children_list)
             {
                 std::string sql = "drop table Node" + std::to_string(child) + ";";
-                dbManager.execNotSelectSql(sql,localSiteName);
+                dbManager.execNotSelectSql(sql, localSiteName);
             }
+            
             resp_data["content"] = data;
         }
     END:
@@ -849,9 +876,14 @@ namespace server
                 cout << "receive select sql" << endl;
                 std::vector<metadataTable> Tables = db::opt::getMetadata();
                 cout << "get metadata" << endl;
-                db::opt::Tree optimized_tree = db::opt::SelectProcess(Tables, &result);
-                cout << "get optimized tree" << endl;
-                AugmentedPlan plan = build_augmented_plan(optimized_tree);
+                // db::opt::Tree optimized_tree = db::opt::SelectProcess(Tables, &result);
+                // cout << "get optimized tree" << endl;
+                // AugmentedPlan plan = build_augmented_plan(optimized_tree);
+                // read planjson from res/test.json
+                std::ifstream i("res/test.json");
+                json planjson;
+                i >> planjson;
+                AugmentedPlan plan(planjson);
                 cout << "get augmented plan" << endl;
                 int root_id = plan.find_root_id();
                 std::string root_site = plan.augplannodes[root_id].execute_site;

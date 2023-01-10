@@ -1,105 +1,98 @@
 {
-    "content": {
-        "execute_node": 4,
-        "plan": {
-            "0": {
-                "columns": [
-                    {
-                        "name": "Publisher_id",
-                        "type": "integer"
-                    },
-                    {
-                        "name": "Publisher_name",
-                        "type": "text"
-                    },
-                    {
-                        "name": "Publisher_nation",
-                        "type": "text"
-                    }
-                ],
-                "execute_site": "ddb1",
-                "parent_id": 4,
-                "sql": "select Publisher_id,Publisher_name,Publisher_nation from Publisher"
+    "0": {
+        "columns": [
+            {
+                "name": "id",
+                "type": "integer"
             },
-            "1": {
-                "columns": [
-                    {
-                        "name": "Publisher_id",
-                        "type": "integer"
-                    },
-                    {
-                        "name": "Publisher_name",
-                        "type": "text"
-                    },
-                    {
-                        "name": "Publisher_nation",
-                        "type": "text"
-                    }
-                ],
-                "execute_site": "ddb2",
-                "parent_id": 4,
-                "sql": "select Publisher_id,Publisher_name,Publisher_nation from Publisher"
+            {
+                "name": "name",
+                "type": "text"
             },
-            "2": {
-                "columns": [
-                    {
-                        "name": "Publisher_id",
-                        "type": "integer"
-                    },
-                    {
-                        "name": "Publisher_name",
-                        "type": "text"
-                    },
-                    {
-                        "name": "Publisher_nation",
-                        "type": "text"
-                    }
-                ],
-                "execute_site": "ddb3",
-                "parent_id": 4,
-                "sql": "select Publisher_id,Publisher_name,Publisher_nation from Publisher"
-            },
-            "3": {
-                "columns": [
-                    {
-                        "name": "Publisher_id",
-                        "type": "integer"
-                    },
-                    {
-                        "name": "Publisher_name",
-                        "type": "text"
-                    },
-                    {
-                        "name": "Publisher_nation",
-                        "type": "text"
-                    }
-                ],
-                "execute_site": "ddb4",
-                "parent_id": 4,
-                "sql": "select Publisher_id,Publisher_name,Publisher_nation from Publisher"
-            },
-            "4": {
-                "columns": [
-                    {
-                        "name": "Publisher.id",
-                        "type": ""
-                    },
-                    {
-                        "name": "Publisher.name",
-                        "type": ""
-                    },
-                    {
-                        "name": "Publisher.nation",
-                        "type": ""
-                    }
-                ],
-                "execute_site": "ddb1",
-                "parent_id": -1,
-                "sql": "select * from Node0 union select * from Node1 union select * from Node2 union select * from Node3"
-            },
-            "node_num": 5
-        }
+            {
+                "name": "nation",
+                "type": "text"
+            }
+        ],
+        "execute_site": "ddb1",
+        "parent_id": 4,
+        "sql": "select id,name,nation from publisher"
     },
-    "site": "ddb1",
-    "type": "start_execute"
+    "1": {
+        "columns": [
+            {
+                "name": "id",
+                "type": "integer"
+            },
+            {
+                "name": "name",
+                "type": "text"
+            },
+            {
+                "name": "nation",
+                "type": "text"
+            }
+        ],
+        "execute_site": "ddb2",
+        "parent_id": 4,
+        "sql": "select id,name,nation from publisher"
+    },
+    "2": {
+        "columns": [
+            {
+                "name": "id",
+                "type": "integer"
+            },
+            {
+                "name": "name",
+                "type": "text"
+            },
+            {
+                "name": "nation",
+                "type": "text"
+            }
+        ],
+        "execute_site": "ddb3",
+        "parent_id": 4,
+        "sql": "select id,name,nation from publisher"
+    },
+    "3": {
+        "columns": [
+            {
+                "name": "id",
+                "type": "integer"
+            },
+            {
+                "name": "name",
+                "type": "text"
+            },
+            {
+                "name": "nation",
+                "type": "text"
+            }
+        ],
+        "execute_site": "ddb4",
+        "parent_id": 4,
+        "sql": "select id,name,nation from publisher"
+    },
+    "4": {
+        "columns": [
+            {
+                "name": "id",
+                "type": "integer"
+            },
+            {
+                "name": "name",
+                "type": "text"
+            },
+            {
+                "name": "nation",
+                "type": "text"
+            }
+        ],
+        "execute_site": "ddb1",
+        "parent_id": -1,
+        "sql": "select * from Node0 union select * from Node1 union select * from Node2 union select * from Node3"
+    },
+    "node_num": 5
 }

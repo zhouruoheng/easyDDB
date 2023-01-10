@@ -13,6 +13,7 @@ public:
 
     json getTableInfo(const Table &table);
     json execSelectSql(const std::string &sql, const Table &table, std::string site_name);
+    json execSelectSqlzy(const std::string &sql, const Table &table, std::string site_name,std::vector<int> isint);
     void execNotSelectSql(const std::string &sql,std::string site_name);
 
     std::string unix_socket;
