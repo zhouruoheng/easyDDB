@@ -25,8 +25,6 @@ public:
                       ServerResponse* response,
                       google::protobuf::Closure* done);
 
-private:
-
     std::string send_site_message(std::string msg_type,std::string siteName, std::string data);
     json sendMsg(std::string siteName, std::string data);
     json broadcastMsg(std::string data);
@@ -38,13 +36,20 @@ private:
     void onMsgResponse(brpc::Controller* cntl, db::ServerResponse* response);
     std::string columnname_to_type(std::string name);
     AugmentedPlan build_augmented_plan(db::opt::Tree query_tree);
-    AugPlanNode transfer_to_AugNode(db::opt::Tree query_tree, int i, AugmentedPlan plan);
-    json sendAsyMsg(std::pair<std::string, std::string> siteName, std::string data);
+    AugPlanNode transfer_to_AugNode(db::opt::Tree query_tree, int i, AugmentedPlan &plan);
+    
     Config cfg;
     std::string localSiteName;
     SitesManager sitesManager;
     DbManager dbManager;
     uint64_t requestID;
+};
+void* sendAsyMsg(void *args);
+struct Aargs{
+    std::string siteName;
+    std::string msg;
+    ServiceImpl* service;
+    Aargs(std::string siteName, std::string msg, ServiceImpl* service):siteName(siteName), msg(msg), service(service){}
 };
 
 }

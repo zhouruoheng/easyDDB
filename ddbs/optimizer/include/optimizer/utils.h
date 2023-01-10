@@ -2,7 +2,7 @@
 
 #include <vector>
 #include <map>
-#include "hsql/SQLParser.h"
+#include <SQLParser.h>
 
 #define INF 1e9
 

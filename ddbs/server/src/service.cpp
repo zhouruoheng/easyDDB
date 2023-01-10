@@ -1,7 +1,59 @@
 #include <server/service.hpp>
 
 namespace server
-{
+{   
+    void* sendAsyMsg(void *args)
+    {
+        Aargs *p = (Aargs*)args;
+        std::string sitename=p->siteName;
+        std::string msg=p->msg;
+        ServiceImpl* service=p->service;
+        brpc::Channel *channel = service->sitesManager.getChannel(sitename);
+        db::Service_Stub stub(channel);
+        db::ServerRequest request;
+        db::ServerResponse response;
+        brpc::Controller cntl;
+        request.set_msg(msg);
+
+        cntl.set_log_id(service->sitesManager.requestID++); // set by user
+        // Set attachment which is wired to network directly instead of
+        // being serialized into protobuf messages.
+        cntl.request_attachment().append("attachment");
+
+
+        // Because `done'(last parameter) is NULL, this function waits until
+        // the response comes back or error occurs(including timedout).
+
+        stub.ServerMsg(&cntl, &request, &response, NULL);
+        if (!cntl.Failed())
+        {
+            LOG(INFO) << "(success) Received response from " << cntl.remote_side()
+                      << " to " << cntl.local_side()
+                      << ": " << response.msg() << " (attached="
+                      << cntl.response_attachment() << ")"
+                      << " latency=" << cntl.latency_us() << "us" << std::endl;
+            json data = json::parse(response.msg());
+            Table table = data["content"]["content"]["table"].get<Table>();
+            std::string typeClause = "";
+            for (auto &col : data["content"]["columns"])
+            {
+                if (typeClause.size() > 0)
+                    typeClause += " , ";
+                typeClause += col["name"].get<std::string>() + " " + Datatype2String((hsql::DataType)col["type"].get<int>());
+            }
+            std::string sql = "create table " + table + "(" + typeClause + ");";
+            service->dbManager.execNotSelectSql(sql);
+            service->dbManager.execNotSelectSql("insert into " + table + " values " + data["content"]["content"]["data"].get<std::string>() + ";");
+
+        }
+        else
+        {
+            LOG(ERROR) << cntl.ErrorText() << std::endl;
+        }
+        delete &cntl;
+        delete &response;
+        return nullptr;
+    }
     // void ServiceImpl::sendAsyMsg(void* data)
     // {
     //     std::pair<std::string, std::string> *p = (std::pair<std::string, std::string>*)data;
@@ -66,18 +118,42 @@ namespace server
     //     delete &cntl;
     //     delete &response;
     // }
+    
     AugmentedPlan ServiceImpl::build_augmented_plan(db::opt::Tree query_tree)
     {
         AugmentedPlan plan;
         // get the total num of query_tree.tr
         plan.node_num = query_tree.tr.size();
+        //build the tree from bottom to top
+        vector<int> has_built;
         for (int i = 0; i < plan.node_num; i++)
         {
-            plan.augplannodes.push_back(transfer_to_AugNode(query_tree, i, plan));
+            if (query_tree.tr[i].type == "Fragment")
+            {
+
+                has_built.push_back(i);
+                plan.augplannodes.push_back(transfer_to_AugNode(query_tree, i, plan));
+            }
         }
+        while(has_built.size()<query_tree.tr.size()){
+            for (int i = 0; i < plan.node_num; i++)
+            {
+                for(auto &child:query_tree.tr[i].child){
+                    if(find(has_built.begin(),has_built.end(),child)==has_built.end()){
+                        break;
+                    }
+                }
+                plan.augplannodes.push_back(transfer_to_AugNode(query_tree, i, plan));
+                has_built.push_back(i);
+            }
+        }
+        // for (int i = 0; i < plan.node_num; i++)
+        // {
+        //     plan.augplannodes.push_back(transfer_to_AugNode(query_tree, i, plan));
+        // }
         return plan;
     }
-    AugPlanNode ServiceImpl::transfer_to_AugNode(db::opt::Tree query_tree, int i, AugmentedPlan plan)
+    AugPlanNode ServiceImpl::transfer_to_AugNode(db::opt::Tree query_tree, int i, AugmentedPlan &plan)
     {
         AugPlanNode node;
         node.node_id = i;
@@ -118,7 +194,19 @@ namespace server
                 select_what = select_what.substr(0, select_what.size() - 1);
             }
             from_what = query_tree.tr[i].fname.first;
-            sql = "select " + select_what + " from " + from_what;
+            for (auto &onecondition : query_tree.tr[i].select)
+            {
+                if (onecondition.type=="string"){
+                    select_what += onecondition.table + "_" + onecondition.attr + onecondition.opt +"\'"+onecondition.sval+"\'";
+                }
+                else{
+                    select_what += onecondition.table + "_" + onecondition.attr + onecondition.opt + std::to_string(onecondition.ival);
+                }
+                //if it is not the last one,add and
+                    select_what+=" and ";
+            }
+            select_what = select_what.substr(0, select_what.size() - 5);
+            sql = "select " + select_what + " from " + from_what+" where "+where_what;
         }
         else if (query_tree.tr[i].type == "Union")
         {
@@ -144,7 +232,7 @@ namespace server
         }
         else if (query_tree.tr[i].type == "Join")
         {
-            sql = "";
+            
         }
         else
         {
@@ -525,7 +613,7 @@ namespace server
             int execute_node = data["content"]["execute_node"].get<int>();
             AugmentedPlan plan = AugmentedPlan((data["content"]["plan"].get<json>()));
             vector<int> children_list = plan.get_children_list(execute_node);
-            vector<brpc::CallId> cids;
+            vector<bthread_t> tids;
             // for (auto &child : children_list)
             // {
             //     json child_data{
@@ -544,40 +632,43 @@ namespace server
                     {"content",
                      {{"execute_node", std::to_string(child)}, {"plan", plan.to_json()}}}};
                 std::string child_msg = child_data.dump();
-                json data = sitesManager.sendMsg(plan.augplannodes[child].execute_site, child_msg);
-                Table table = data["content"]["content"]["table"].get<Table>();
-                std::string typeClause = "";
-                for (auto &col : data["content"]["columns"])
-                {
-                    if (typeClause.size() > 0)
-                        typeClause += " , ";
-                    typeClause += col["name"].get<std::string>() + " " + Datatype2String((hsql::DataType)col["type"].get<int>());
-                }
-                std::string sql = "create table " + table + "(" + typeClause + ");";
-                dbManager.execNotSelectSql(sql);
-                std::string valueClause = "";
-                for (auto &row : data["content"]["data"])
-                {
-                    std::string rowClause = "";
-                    for (auto &item : row)
-                    {
-                        if (rowClause.size() > 0)
-                            rowClause += ",";
-                        rowClause += Value2String(item);
-                    }
-                    if (valueClause.size() > 0)
-                        valueClause += ",";
-                    valueClause += "(" + rowClause + ")";
-                }
-                sql = "insert into " + table + " values " + valueClause + ";";
-                dbManager.execNotSelectSql(sql);
-                // open a bthread
-                //  bthread_t tid;
-                //  bthread_start_background(&tid, NULL, sendAsyMsg, (void *)new std::pair<std::string, std::string>(plan.augplannodes[child].execute_site, child_msg));
+                // json data = sitesManager.sendMsg(plan.augplannodes[child].execute_site, child_msg);
+                // Table table = data["content"]["content"]["table"].get<Table>();
+                // std::string typeClause = "";
+                // for (auto &col : data["content"]["columns"])
+                // {
+                //     if (typeClause.size() > 0)
+                //         typeClause += " , ";
+                //     typeClause += col["name"].get<std::string>() + " " + Datatype2String((hsql::DataType)col["type"].get<int>());
+                // }
+                // std::string sql = "create table " + table + "(" + typeClause + ");";
+                // dbManager.execNotSelectSql(sql);
+                // std::string valueClause = "";
+                // for (auto &row : data["content"]["data"])
+                // {
+                //     std::string rowClause = "";
+                //     for (auto &item : row)
+                //     {
+                //         if (rowClause.size() > 0)
+                //             rowClause += ",";
+                //         rowClause += Value2String(item);
+                //     }
+                //     if (valueClause.size() > 0)
+                //         valueClause += ",";
+                //     valueClause += "(" + rowClause + ")";
+                // }
+                // sql = "insert into " + table + " values " + valueClause + ";";
+                // dbManager.execNotSelectSql(sql);
+                //open a bthread
+                bthread_t tid;
+                //Aargs
+                Aargs args(plan.augplannodes[child].execute_site, child_msg,this);
+                bthread_start_background(&tid, NULL, *sendAsyMsg, &args);
+                tids.push_back(tid);
             }
-            for (auto &cid : cids)
+            for (auto &tid : tids)
             {
-                brpc::Join(cid);
+                bthread_join(tid, NULL);
             }
             json data{
                 {"table", "Node" + std::to_string(execute_node)},
