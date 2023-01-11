@@ -1,0 +1,11 @@
+{
+    "fragmentInfo": {
+        "A": [
+            {
+                "attr": ["*"],
+                "conditions": [],
+                "site": "ddb1"
+            }
+        ]
+    }
+}

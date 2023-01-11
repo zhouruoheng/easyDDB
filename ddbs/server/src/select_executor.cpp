@@ -27,11 +27,18 @@ namespace server
         j["node_num"] = node_num;
         for (int i = 0; i < node_num; i++)
         {
-            j[std::to_string(i)]["sql"] = augplannodes[i].sql;
-            j[std::to_string(i)]["parent_id"] = augplannodes[i].parent_id;
-            j[std::to_string(i)]["execute_site"] = augplannodes[i].execute_site;
+            int t;
+            for(int q=0;q<augplannodes.size();q++){
+                if (augplannodes[q].node_id==i){
+                    t=q;
+                    break;
+                }
+            }
+            j[std::to_string(i)]["sql"] = augplannodes[t].sql;
+            j[std::to_string(i)]["parent_id"] = augplannodes[t].parent_id;
+            j[std::to_string(i)]["execute_site"] = augplannodes[t].execute_site;
             json columns;
-            for (auto column : augplannodes[i].columns)
+            for (auto column : augplannodes[t].columns)
             {
                 json col;
                 col["name"] = column.name;

@@ -1,4 +1,5 @@
 #include <server/service.hpp>
+#include <optimizer/metadata.hpp>
 
 namespace server
 {
@@ -209,6 +210,7 @@ namespace server
                 std::cout << "select *" << std::endl;
                 for (auto &col : query_tree.tr[i].attr)
                 {
+                    std::cout << col << std::endl;
                     // replace . to _
                     col = col.replace(col.find("."), 1, "_");
                     std::cout << col << "col" << std::endl;
@@ -264,20 +266,18 @@ namespace server
         else if (query_tree.tr[i].type == "Union")
         {
             std::vector<int> all_child = query_tree.tr[i].child;
+            int firstchild=all_child[0];
+            for (auto &col : query_tree.tr[i].attr)
+            {
+                // replace . to _
+                col = col.replace(col.find("."), 1, "_");
+                columnzy column(col, columnname_to_type(col));
+                node.columns.push_back(column);
+                select_what+=col+",";
+            }
+            select_what = select_what.substr(0, select_what.size() - 1);
             for (auto &child : all_child)
             {
-                if(child ==all_child.front())
-                {
-                    for (auto &col : query_tree.tr[child].attr)
-                    {
-                        // replace . to _
-                        col = col.replace(col.find("."), 1, "_");
-                        columnzy column(col, columnname_to_type(col));
-                        node.columns.push_back(column);
-                        select_what+=col+",";
-                    }
-                    select_what = select_what.substr(0, select_what.size() - 1);
-                }
                 from_what = "Node" + std::to_string(child);
                 if (child != all_child.back())
                     sql += "select " + select_what + " from " + from_what + " union all ";
@@ -916,6 +916,9 @@ namespace server
                 // json planjson;
                 // i >> planjson;
                 // AugmentedPlan plan(planjson);
+                json planjson=plan.to_json();
+                std::ofstream o("res/test.json");
+                o << std::setw(4) << planjson << std::endl;
                 cout << "get augmented plan" << endl;
                 int root_id = plan.find_root_id();
                 std::string root_site = plan.augplannodes[root_id].execute_site;
@@ -959,8 +962,9 @@ namespace server
                          {{"table", fragInsert->table},
                           {"data", insertData}}}};
                     json resp = sitesManager.sendMsg(site, data.dump());
-                    if (resp["info"].get<std::string>() != "success")
+                    if (resp["info"].get<std::string>() != "(success)")
                         return resp.dump();
+                    LOG(INFO) << "Insert: " << site << " data size: " << insertData.size() << std::endl;
                 }
                 return json{{"err", 0}}.dump();
             }
@@ -1012,6 +1016,7 @@ namespace server
                     if (resp["info"].get<std::string>() != "(success)")
                         return resp.dump();
                 }
+                putTables();
                 return json{{"err", 0}}.dump();
             }
             else if (statement->isType(hsql::kStmtDelete))
@@ -1180,17 +1185,18 @@ namespace server
             //     dropFn(fragSelect);
             //     return usResult.dump();
         }
-        return "[sql is not valid]";
+        return json{{"err", 1}, {"info", "[sql is not valid]"}}.dump();
     }
 
     std::string ServiceImpl::execPartition(const std::string &msg)
     {
         json updateConfig = json::parse(msg);
-        json resp = sitesManager.broadcastMsg(updateConfig.dump());
-        std::string info = resp["info"].get<std::string>();
-        if (info != "(success)")
-            return info;
-        return "(success)";
+        json cmd = {
+            {"type", "updateConfig"},
+            {"content", updateConfig}
+        };
+        json resp = sitesManager.broadcastMsg(cmd.dump());
+        return resp.dump();
     }
 
     template <typename T>
@@ -1306,6 +1312,7 @@ namespace server
             json resp = sitesManager.sendMsg(site, data.dump());
             if (resp["info"].get<std::string>() != "(success)")
                 return resp.dump();
+            etcd_opt(string2json("/table/" + table + "/fragment/" + site, std::to_string(insertData.size())), "PUT");
         }
         return json{{"err", 0}}.dump();
     }

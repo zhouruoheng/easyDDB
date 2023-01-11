@@ -190,6 +190,14 @@ int main(int argc, char *argv[])
             std::string recv_msg = send_request(stub, "load", msg.dump(), ++log_id);
             printf("recv msg: %s\n", recv_msg.c_str());
         });
+    
+    shell.register_conf_cmd(
+        "create",
+        [&](const std::string &name) -> void
+        {
+            printf("create database %s success.\n", name.c_str());
+        }
+    );
 
     shell.run();
     return 0;
