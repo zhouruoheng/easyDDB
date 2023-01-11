@@ -137,7 +137,7 @@ int main(int argc, char *argv[])
                         {
         // test_fn(msg);
         std::string recv_msg = send_request(stub, "sql", msg, ++log_id);
-        printf("recv msg: %s\n", recv_msg.c_str());
+        // printf("recv msg: %s\n", recv_msg.c_str());
         json json_msg = json::parse(recv_msg);
         if (json_msg.contains("data")) {
             printf("row numbers: %d\n", (int)json_msg["data"].size());

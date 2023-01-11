@@ -860,7 +860,7 @@ namespace server
                 std::string sql = "drop table if exists Node" + std::to_string(child) + ";";
                 dbManager.execNotSelectSql(sql, localSiteName);
             }
-
+            std::cout<<"data prepared"<<std::endl;
             resp_data["content"] = data;
             resp_data["size"] = data2["size"];
         }

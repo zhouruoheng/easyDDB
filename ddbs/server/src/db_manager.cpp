@@ -68,6 +68,7 @@ namespace server
             }
             mysql_free_result(result);
             mysql_close(&connection);
+            std::cout<<"select over"<<std::endl;
             return json_result;
         }
         LOG(INFO) << "[connection error] " << std::endl;
