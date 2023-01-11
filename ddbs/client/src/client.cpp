@@ -165,6 +165,7 @@ int main(int argc, char *argv[]) {
                 data.push_back(row);
                 linenum++;
             }
+            linenum=0;
             json msg = {
                 {"table", _name},
                 {"data", data}

@@ -46,10 +46,15 @@ namespace server
                     typeClause += " , ";
                 typeClause += col["name"].get<std::string>() + " " + col["type"].get<std::string>();
             }
+            std::string drop_sql = "drop table if exists " +table + ";";
+            service->dbManager.execNotSelectSql(drop_sql, service->localSiteName);
             std::string sql = "create table " + table + "(" + typeClause + ");";
             std::cout << sql << std::endl;
             service->dbManager.execNotSelectSql(sql, service->localSiteName);
             std::string valueClause = "";
+            if (data["content"]["data"].size() == 0)
+                delete args;
+                return nullptr;
             for (auto &row : data["content"]["data"])
             {
                 std::string rowClause = "";
@@ -845,7 +850,7 @@ namespace server
             data["data"] = data2["content"];
             for (auto &child : children_list)
             {
-                std::string sql = "drop table Node" + std::to_string(child) + ";";
+                std::string sql = "drop table if exists Node" + std::to_string(child) + ";";
                 dbManager.execNotSelectSql(sql, localSiteName);
             }
 
