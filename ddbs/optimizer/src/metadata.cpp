@@ -206,8 +206,6 @@ vector<metadataTable> getTables()
     vector<string> tab=string2list(json2string(etcd_opt(string2json("/table",""), "GET")));
 	int cnt=0;
     for (auto x : tab){
-		if (++cnt > 1 ) 
-			break;
         string key = json2string(etcd_opt(string2json("/table/"+x+"/key",""), "GET"));
         string type = json2string(etcd_opt(string2json("/table/"+x+"/schema",""), "GET"));
         metadataTable temp=metadataTable(x, type, key);

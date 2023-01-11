@@ -53,6 +53,9 @@ void Shell::run() {
     static auto parse_cmd_name = [](const std::string &s) -> std::string {
         return s.substr(0, s.find_first_of(' '));
     };
+    static auto parse_cmd_content = [](const std::string &s) -> std::string {
+        return s.substr(s.find_first_of(' ') + 1);
+    };
 
     while (true) {
         std::string line = parse_input();
@@ -66,8 +69,9 @@ void Shell::run() {
                 sql_cmd(line); cmd_found = true;
             } else {
                 std::string cmd_name = parse_cmd_name(line);
+                std::string cmd_content = parse_cmd_content(line);
                 if (conf_cmd.count(cmd_name)) {
-                    conf_cmd[cmd_name](line); cmd_found = true;
+                    conf_cmd[cmd_name](cmd_content); cmd_found = true;
                 }
             }
         }

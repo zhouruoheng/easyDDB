@@ -10,7 +10,7 @@
                         "value": 205000
                     }
                 ],
-                "site": "site-1"
+                "site": "ddb1"
             },
             {
                 "attr": ["*"],
@@ -26,7 +26,7 @@
                         "value": 210000
                     }
                 ],
-                "site": "site-2"
+                "site": "ddb2"
             },
             {
                 "attr": ["*"],
@@ -37,19 +37,19 @@
                         "value": 210000
                     }
                 ],
-                "site": "site-3"
+                "site": "ddb3"
             }
         ],
         "Customer": [
             {
                 "attr": ["id", "name"],
                 "conditions": [],
-                "site": "site-1"
+                "site": "ddb1"
             },
             {
                 "attr": ["id", "rank"],
                 "conditions": [],
-                "site": "site-2"
+                "site": "ddb2"
             }
         ],
         "Orders": [
@@ -67,7 +67,7 @@
                         "value": 215000
                     }
                 ],
-                "site": "site-1"
+                "site": "ddb1"
             },
             {
                 "attr": ["*"],
@@ -83,7 +83,7 @@
                         "value": 215000
                     }
                 ],
-                "site": "site-2"
+                "site": "ddb2"
             },
             {
                 "attr": ["*"],
@@ -99,7 +99,7 @@
                         "value": 215000
                     }
                 ],
-                "site": "site-3"
+                "site": "ddb3"
             },
             {
                 "attr": ["*"],
@@ -115,7 +115,7 @@
                         "value": 215000
                     }
                 ],
-                "site": "site-4"
+                "site": "ddb4"
             }
         ],
         "Publisher": [
@@ -133,7 +133,7 @@
                         "value": "PRC"
                     }
                 ],
-                "site": "site-1"
+                "site": "ddb1"
             },
             {
                 "attr": ["*"],
@@ -149,7 +149,7 @@
                         "value": "USA"
                     }
                 ],
-                "site": "site-2"
+                "site": "ddb2"
             },
             {
                 "attr": ["*"],
@@ -165,7 +165,7 @@
                         "value": "PRC"
                     }
                 ],
-                "site": "site-3"
+                "site": "ddb3"
             },
             {
                 "attr": ["*"],
@@ -181,7 +181,7 @@
                         "value": "USA"
                     }
                 ],
-                "site": "site-4"
+                "site": "ddb4"
             }
         ]
     },

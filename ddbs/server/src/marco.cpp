@@ -17,7 +17,7 @@ DEFINE_string(site_name, "site-1", "Local site name");
 DEFINE_string(protocol, "baidu_std", "Protocol type. Defined in src/brpc/options.proto");
 DEFINE_string(connection_type, "", "Connection type. Available values: single, pooled, short");
 DEFINE_string(load_balancer, "", "The algorithm for load balancing");
-DEFINE_int32(timeout_ms, 200000, "RPC timeout in milliseconds");
+DEFINE_int32(timeout_ms, 1000000, "RPC timeout in milliseconds");
 DEFINE_int32(max_retry, 3, "Max retries(not including the first RPC)");
 
 }

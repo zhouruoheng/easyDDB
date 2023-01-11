@@ -145,6 +145,7 @@ namespace server
         }
         return json::object({{"info", "(success)"},
                              {"content", nullptr}});
+        std::cout<<"successfully broadcasted"<<std::endl;
     }
 
 }
