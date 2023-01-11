@@ -9,7 +9,7 @@ namespace server
         Aargs *p = (Aargs *)args;
         std::string msg = p->msg;
         std::string sitename = p->siteName;
-        std::cout << msg << std::endl;
+        // std::cout << msg << std::endl;
         std::cout << sitename << std::endl;
         ServiceImpl *service = p->service;
         brpc::Channel *channel = service->sitesManager.getChannel(sitename);
@@ -37,7 +37,7 @@ namespace server
                       << cntl.response_attachment() << ")"
                       << " latency=" << cntl.latency_us() << "us" << std::endl;
             json data = json::parse(response.msg());
-            std::cout << "data parsed suss" << std::endl;
+            // std::cout << "data parsed suss" << std::endl;
             Table table = data["content"]["table"].get<Table>();
             std::cout << table << std::endl;
             std::string typeClause = "";
@@ -787,7 +787,7 @@ namespace server
                     {"content",
                      {{"execute_node", child}, {"plan", plan.to_json()}}}};
                 std::string child_msg = child_data.dump();
-                std::cout << child_msg << std::endl;
+                // std::cout << child_msg << std::endl;
                 // json data = sitesManager.sendMsg(plan.augplannodes[child].execute_site, child_msg);
                 // Table table = data["content"]["content"]["table"].get<Table>();
                 // std::string typeClause = "";
