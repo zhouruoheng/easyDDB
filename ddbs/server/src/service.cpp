@@ -476,7 +476,7 @@ namespace server
         LOG(INFO) << "(SendClientMsg) Received request[log_id=" << cntl->log_id()
                   << "] from " << cntl->remote_side()
                   << " to " << cntl->local_side()
-                  << ": " << request->msg()
+                  << ": " 
                   << " (attached=" << cntl->request_attachment() << ")";
 
         std::string resp_msg;
@@ -523,7 +523,7 @@ namespace server
         LOG(INFO) << "(SendClientMsg) Received request[log_id=" << cntl->log_id()
                   << "] from " << cntl->remote_side()
                   << " to " << cntl->local_side()
-                  << ": " << request->msg()
+                  << ": " 
                   << " (attached=" << cntl->request_attachment() << ")";
 
         uint64_t log_id = cntl->log_id();

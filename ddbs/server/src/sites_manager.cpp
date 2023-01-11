@@ -120,7 +120,7 @@ namespace server
         {
             LOG(INFO) << "(success) Received response from " << cntl.remote_side()
                       << " to " << cntl.local_side()
-                      << ": " << response.msg() << " (attached="
+                      << ": "  << " (attached="
                       << cntl.response_attachment() << ")"
                       << " latency=" << cntl.latency_us() << "us" << std::endl;
             return json::parse(response.msg());
