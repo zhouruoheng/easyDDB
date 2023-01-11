@@ -214,6 +214,7 @@ vector<metadataTable> getTables()
         for (int i=1;i<=fragNum;i++){
             string url = "/table/"+x+"/fragment/"+to_string(i)+"/";
             int pos = atoi(json2string(etcd_opt(string2json(url+"pos",""), "GET")).c_str());
+            string url_size = "/table/"+x+"/fragment/ddb"+to_string(i)+"/";
 			int size = atoi(json2string(etcd_opt(string2json(url+"size",""), "GET")).c_str());
             Fragment fr = Fragment(make_pair(x,1), pos, type, size);
             if (type=="hf") {

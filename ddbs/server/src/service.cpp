@@ -906,7 +906,7 @@ namespace server
             if (statement->isType(hsql::kStmtSelect))
             {
                 cout << "receive select sql" << endl;
-                std::vector<metadataTable> Tables = db::opt::getMetadata();
+                std::vector<metadataTable> Tables = getTables();
                 cout << "get metadata" << endl;
                 db::opt::Tree optimized_tree = db::opt::SelectProcess(Tables, &result);
                 // cout << "get optimized tree" << endl;
@@ -1312,7 +1312,7 @@ namespace server
             json resp = sitesManager.sendMsg(site, data.dump());
             if (resp["info"].get<std::string>() != "(success)")
                 return resp.dump();
-            etcd_opt(string2json("/table/" + table + "/fragment/" + site, std::to_string(insertData.size())), "PUT");
+            etcd_opt(string2json("/table/" + table + "/fragment/" + site + "/size", std::to_string(insertData.size())), "PUT");
         }
         return json{{"err", 0}}.dump();
     }

@@ -78,7 +78,7 @@ namespace db::opt
 
 	vector<Condition> check_condition(vector<Condition> hf_condition, vector<Condition> Predicate, int &cnt);
 
-	vector<metadataTable> getMetadata();
+	vector<metadataTable> InitMetadata(vector<metadataTable> res);
 
 	metadataTable findTable(vector<metadataTable> Tables, string tableName);
 	vector<int> findAttr(vector<Condition> hf_condition, string table, string attr);

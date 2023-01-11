@@ -262,8 +262,9 @@ namespace db::opt
 		return intersection;
 	}
 
-	vector<metadataTable> getMetadata()
+	vector<metadataTable> InitMetadata(vector<metadataTable> res)
 	{
+		if (res.size()==4) return res;
 		vector<metadataTable> Tables;
 		metadataTable Publisher = metadataTable("Publisher", "hf", "id");
 		Publisher.attrs.push_back("Publisher.id");
@@ -925,6 +926,7 @@ namespace db::opt
 		vector<string> fromTable, Select_Attr, All_Attr; // All_Attr所有涉及到的Attr
 		vector<Condition> Predicate;					 // where中的非join条件
 		vector<joinCell> Join;
+		Tables = InitMetadata(Tables);
 		hsql::printStatementInfo(result->getStatement(0));
 		// cout<<"!!!"<<endl;
 		const hsql::SelectStatement *Statement = (const hsql::SelectStatement *)result->getStatement(0);
