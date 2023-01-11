@@ -266,19 +266,24 @@ namespace server
             std::vector<int> all_child = query_tree.tr[i].child;
             for (auto &child : all_child)
             {
-                select_what = "*";
+                if(child ==all_child.front())
+                {
+                    for (auto &col : query_tree.tr[child].attr)
+                    {
+                        // replace . to _
+                        col = col.replace(col.find("."), 1, "_");
+                        columnzy column(col, columnname_to_type(col));
+                        node.columns.push_back(column);
+                        select_what+=col+",";
+                    }
+                    select_what = select_what.substr(0, select_what.size() - 1);
+                }
                 from_what = "Node" + std::to_string(child);
                 if (child != all_child.back())
                     sql += "select " + select_what + " from " + from_what + " union all ";
                 else
                 {
                     sql += "select " + select_what + " from " + from_what;
-                    for (auto &col : query_tree.tr[i].attr)
-                    {
-                        col = col.replace(col.find("."), 1, "_");
-                        columnzy column(col, columnname_to_type(col));
-                        node.columns.push_back(column);
-                    }
                 }
             }
         }

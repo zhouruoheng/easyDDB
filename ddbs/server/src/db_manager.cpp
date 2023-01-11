@@ -14,6 +14,7 @@ namespace server
 
     json DbManager::execSelectSqlzy(const std::string &sql, const Table &table , std::string site_name, std::vector<int> isint)
     {
+
         int PORT;
         char *UNIX_SOCKET;
         if (site_name == "ddb2")
