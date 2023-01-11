@@ -520,7 +520,7 @@ namespace server
         // The purpose of following logs is to help you to understand
         // how clients interact with servers more intuitively. You should
         // remove these logs in performance-sensitive servers.
-        LOG(INFO) << "(SendClientMsg) Received request[log_id=" << cntl->log_id()
+        LOG(INFO) << "(SendServerMsg) Received request[log_id=" << cntl->log_id()
                   << "] from " << cntl->remote_side()
                   << " to " << cntl->local_side()
                   << ": " 
@@ -906,7 +906,7 @@ namespace server
             if (statement->isType(hsql::kStmtSelect))
             {
                 cout << "receive select sql" << endl;
-                std::vector<metadataTable> Tables = getTables();
+                std::vector<metadataTable> Tables;
                 cout << "get metadata" << endl;
                 db::opt::Tree optimized_tree = db::opt::SelectProcess(Tables, &result);
                 // cout << "get optimized tree" << endl;
@@ -914,7 +914,7 @@ namespace server
                 // read planjson from res/test.json
                 // std::ifstream i("res/test.json");
                 // json planjson;
-                // i >> planjson;
+                // i >> planjson;art_execute"
                 // AugmentedPlan plan(planjson);
                 json planjson=plan.to_json();
                 std::ofstream o("res/test.json");
@@ -922,6 +922,8 @@ namespace server
                 cout << "get augmented plan" << endl;
                 int root_id = plan.find_root_id();
                 std::string root_site = plan.augplannodes[root_id].execute_site;
+                std::cout << "root_site:" << root_site << endl;
+                std::cout << "root_id:" << root_id << endl;
                 json data{
                     {"type", "start_execute"},
                     {"site", localSiteName},
