@@ -135,7 +135,7 @@ namespace server
             PORT = 3316, UNIX_SOCKET = "/home/mysql2/mysql.sock";
         else
             PORT = 3306, UNIX_SOCKET = "/home/mysql1/mysql.sock";
-        LOG(INFO) << "(DBManager): execNotSelectSql: " << sql << std::endl;
+        LOG(INFO) << "(DBManager): execNotSelectSql: " << std::endl;
         MYSQL connection;
         mysql_init(&connection);
         if (mysql_real_connect(&connection, "127.0.0.1", "root", "12345678", "ddb", PORT, UNIX_SOCKET, CLIENT_FOUND_ROWS))
