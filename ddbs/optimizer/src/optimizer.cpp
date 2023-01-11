@@ -300,7 +300,7 @@ namespace db::opt
 		Customer.frags.push_back(frag2);
 		Tables.push_back(Customer);
 		metadataTable Book = metadataTable("Book", "hf", "id");
-		Book.attrs = {"Book.id", "Book.title", "Book.authors", "Book.publisher_id", "Book.copies"};
+		Book.attrs = {"Book.id", "Book.title", "Book.author", "Book.publisher_id", "Book.copies"};
 		frag1 = Fragment(make_pair("Book", 1), 1, "hf", 4999);
 		frag1.hf_condition.push_back(Condition("Book.id<205000"));
 		frag2 = Fragment(make_pair("Book", 2), 2, "hf", 5000);
